@@ -1,0 +1,211 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Primary Colors */
+  --color-primary-50: #EEEEFB;
+  --color-primary-100: #DCDCF7;
+  --color-primary-200: #B9B8EF;
+  --color-primary-300: #9795E6;
+  --color-primary-400: #7471DE;
+  --color-primary-500: #524ED5;
+  --color-primary-600: #413CAD;
+  --color-primary-700: #342F8A;
+  --color-primary-800: #2D2B8D;
+  --color-primary-900: #1E1C5A;
+
+  /* Secondary Colors */
+  --color-secondary-50: #FFFBEB;
+  --color-secondary-100: #FFF6D6;
+  --color-secondary-200: #FFEDAD;
+  --color-secondary-300: #FFE585;
+  --color-secondary-400: #FFDC5C;
+  --color-secondary-500: #FFD333;
+  --color-secondary-600: #FFC903;
+  --color-secondary-700: #E6B500;
+  --color-secondary-800: #BF9600;
+  --color-secondary-900: #997800;
+
+  /* Background Colors */
+  --color-background-white: #FFFFFF;
+  --color-background-wheat: #F9F6F0;
+  --color-background-light: #F5F1E8;
+  --color-background-subtle: #EDE7DB;
+
+  /* Accent Colors */
+  --color-success: #10B981;
+  --color-error: #EF4444;
+  --color-warning: #F59E0B;
+  --color-info: #3B82F6;
+}
+
+.header-scrolled {
+    @apply bg-primary-600 dark:bg-primary-900 shadow-md py-3 md:py-4;
+}
+
+.header-scrolled .header-nav-link {
+    @apply text-white hover:text-primary-100;
+}
+
+.header-scrolled .header-brand-text {
+    @apply text-white;
+}
+
+.header-scrolled .hamburger-line {
+    @apply bg-white;
+}
+
+.header-scrolled .mobile-menu-trigger .hamburger-line {
+    @apply bg-white;
+}
+
+.header-scrolled .mobile-menu-close {
+    @apply text-white;
+}
+/* Explicitly ensure transparent background on desktop */
+@media (min-width: 1024px) {
+    .menu-block {
+        background-color: transparent !important;
+    }
+
+    .menu-block .nav-link-item {
+        @apply text-white hover:text-primary-100;
+    }
+
+    /* Make sure dropdown menus have the right background */
+    .menu-block .sub-menu {
+        @apply bg-white dark:bg-primary-800;
+    }
+}
+
+/* For mobile only */
+@media (max-width: 1023px) {
+    .menu-block {
+        @apply bg-primary-600 dark:bg-primary-800;
+    }
+
+    .menu-block .nav-link-item {
+        @apply text-white border-b border-primary-800 pb-3 mb-2;
+    }
+
+    .menu-block .sub-menu {
+        @apply bg-background-light dark:bg-primary-700 rounded-md;
+    }
+}
+.blog-content details {
+    @apply rounded-xl border border-gray-200 shadow-sm open:shadow-md transition-all duration-300;
+}
+.blog-content summary {
+    @apply cursor-pointer px-4 py-3 font-semibold text-gray-800;
+}
+.blog-content div {
+    @apply px-4 py-4 text-gray-700 leading-relaxed rounded-b-xl border-t border-gray-200;
+}
+/* Grid wrapper */
+.blog-content .filament-tiptap-grid-builder {
+    @apply p-0 border-none grid gap-4;
+}
+
+/* Table */
+.blog-content table p {
+    @apply m-0;
+}
+
+/* List */
+.blog-content li p {
+    @apply m-0;
+}
+
+/* Responsif grid-cols sesuai data-cols (default md:grid-cols-3) */
+.blog-content .filament-tiptap-grid-builder[data-cols='1'] {
+    @apply md:grid-cols-1;
+}
+.blog-content .filament-tiptap-grid-builder[data-cols='2'] {
+    @apply md:grid-cols-2;
+}
+.blog-content .filament-tiptap-grid-builder[data-cols='3'] {
+    @apply md:grid-cols-3;
+}
+.blog-content .filament-tiptap-grid-builder[data-cols='4'] {
+    @apply md:grid-cols-4;
+}
+.blog-content .filament-tiptap-grid-builder[data-cols='5'] {
+    @apply md:grid-cols-5;
+}
+.blog-content .filament-tiptap-grid-builder[data-cols='6'] {
+    @apply md:grid-cols-6;
+}
+
+/* Colum span per elemen */
+.blog-content .filament-tiptap-grid-builder__column[data-col-span='1'] {
+    @apply border border-gray-200 rounded-md ;
+}
+.blog-content .filament-tiptap-grid-builder__column[data-col-span='2'] {
+    @apply col-span-2;
+}
+.blog-content .filament-tiptap-grid-builder__column[data-col-span='3'] {
+    @apply col-span-3;
+}
+.blog-content .filament-tiptap-grid-builder__column[data-col-span='4'] {
+    @apply col-span-4;
+}
+.blog-content .filament-tiptap-grid-builder__column[data-col-span='5'] {
+    @apply col-span-5;
+}
+.blog-content .filament-tiptap-grid-builder__column[data-col-span='6'] {
+    @apply col-span-6;
+}
+
+.post-content{
+    @apply mt-6;
+}
+
+.post-content p{
+    @apply mb-3;
+}
+
+.post-content h1 {
+    @apply text-2xl font-bold mb-2 mt-4;
+}
+
+.post-content h2 {
+    @apply text-xl font-bold mb-2 mt-4;
+}
+
+.post-content h3 {
+    @apply text-lg font-bold mb-2 mt-4;
+}
+
+.post-content h4 {
+    @apply text-lg font-bold mb-2 mt-4;
+}
+
+.post-content h5 {
+    @apply text-lg font-bold mb-2 mt-4;
+}
+
+.post-content h6 {
+    @apply text-lg font-bold mb-2 mt-4;
+}
+
+.post-content ul {
+    @apply list-disc ml-8 mb-3;
+}
+
+.post-content ol {
+    @apply list-decimal mb-3;
+}
+
+.post-content ul p{
+    @apply mb-1;
+}
+
+.post-content ol p{
+    @apply mb-1;
+}
+
+.post-content blockquote {
+    @apply border-l-4 border-blue-400 bg-blue-50 p-4 italic rounded-md mb-3;
+}
+

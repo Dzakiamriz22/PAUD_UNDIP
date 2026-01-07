@@ -1,0 +1,88 @@
+services:
+  app:
+    profiles: ["dev"]
+    build:
+      context: .
+      dockerfile: ./builder/local/Dockerfile
+    container_name: app-filament
+    volumes:
+      - .:/var/www/html
+    networks:
+      - app-bridge
+
+  app-prod:
+    profiles: ["prod"]
+    build:
+      context: .
+      dockerfile: ./builder/prod/Dockerfile
+    container_name: app-filament-prod
+    restart: always
+    volumes:
+      - .:/var/www/html
+    networks:
+      - app-bridge
+
+  webserver:
+    image: nginx:stable-alpine
+    container_name: nginx-filament
+    profiles: ["dev"]
+    ports:
+      - "8080:8080"
+      - "5173:5173"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf   # Menyambungkan file konfigurasi Nginx
+      - .:/var/www/html   # Menyambungkan folder app ke dalam container
+    depends_on:
+      - app
+    networks:
+      - app-bridge
+
+  webserver-prod:
+    image: nginx:stable-alpine
+    container_name: nginx-filament-prod
+    restart: always
+    profiles: ["prod"]
+    ports:
+      - "8201:80" # 82 untuk nginx 01 untuk pengenal container
+    volumes:
+      - ./nginx-prod.conf:/etc/nginx/conf.d/default.conf   # Menyambungkan file konfigurasi Nginx
+      - .:/var/www/html   # Menyambungkan folder app ke dalam container
+    depends_on:
+      - app-prod
+    networks:
+      - app-bridge
+
+  redis:
+    image: redis:latest
+    container_name: redis-filament
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - ./redis:/data
+    networks:
+      - app-bridge
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: mailpit-filament
+    profiles: ["dev"]
+    ports:
+      - "8025:8025"     # Web UI
+      - "1025:1025"     # SMTP
+    networks:
+      - app-bridge
+
+  adminer:
+    image: adminer
+    container_name: adminer-filament
+    restart: always
+    ports:
+      - 8008:8080 # 88 untuk adminer 01 untuk pengenal container
+    networks:
+      - app-bridge
+
+networks:
+  app-bridge:
+    external: true
