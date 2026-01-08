@@ -15,7 +15,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
-use App\Filament\Resources\StudentResource\RelationManagers\StudentClassHistoriesRelationManager;
+use App\Filament\Resources\StudentResource\RelationManagers\ClassHistoriesRelationManager;
+
 
 class StudentResource extends Resource
 {
@@ -132,7 +133,7 @@ class StudentResource extends Resource
     public static function getRelations(): array
     {
         return [
-            StudentClassHistoriesRelationManager::class,
+            ClassHistoriesRelationManager::class,
         ];
     }
 

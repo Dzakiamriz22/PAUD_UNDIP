@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Str;
 
 class SchoolClass extends Model
 {
@@ -22,8 +23,16 @@ class SchoolClass extends Model
         'homeroom_teacher_id',
     ];
 
-    /* ================= RELATIONS ================= */
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
+            }
+        });
+    }
 
+    /* RELATIONS */
     public function academicYear()
     {
         return $this->belongsTo(AcademicYear::class);
