@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\SchoolClass;
 
 class StudentClassHistory extends Model
 {
@@ -27,7 +28,7 @@ class StudentClassHistory extends Model
 
     public function classRoom()
     {
-        return $this->belongsTo(ClassRoom::class, 'class_id');
+        return $this->belongsTo(SchoolClass::class, 'class_id');
     }
 
     public function academicYear()

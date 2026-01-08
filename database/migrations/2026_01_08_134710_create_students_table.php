@@ -10,9 +10,12 @@ return new class extends Migration {
         Schema::create('students', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('name');
+            $table->enum('gender', ['male', 'female']);
+            $table->date('birth_date');
             $table->string('nis')->unique();
             $table->string('parent_name');
-            $table->enum('status', ['active', 'inactive', 'graduated']);
+            $table->enum('status', ['active', 'inactive', 'graduated'])
+                  ->default('active');
             $table->timestamps();
         });
     }
