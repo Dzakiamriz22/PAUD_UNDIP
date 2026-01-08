@@ -16,8 +16,14 @@ class Student extends Model
         'id',
         'name',
         'nis',
+        'gender',
+        'birth_date',
         'parent_name',
         'status',
+    ];
+
+    protected $casts = [
+        'birth_date' => 'date',
     ];
 
     public function classHistories()
