@@ -25,27 +25,25 @@ class AcademicYear extends Model
         'is_active' => 'boolean',
     ];
 
-
-    protected static function booted()
-    {
-        static::saving(function ($academicYear) {
-            if ($academicYear->is_active) {
-                static::where('id', '!=', $academicYear->id)
-                    ->update(['is_active' => false]);
-            }
-        });
-    }
-
+    /**
+     * Scope: tahun ajaran aktif
+     */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
+    /**
+     * Relasi ke kelas
+     */
     public function schoolClasses()
     {
         return $this->hasMany(\App\Models\SchoolClass::class);
     }
 
+    /**
+     * Label: 2024/2025 – Ganjil
+     */
     public function getLabelAttribute()
     {
         return "{$this->year} – " . ucfirst($this->semester);
