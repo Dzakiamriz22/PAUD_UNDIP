@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Str;
 
 class AcademicYear extends Model
 {
@@ -25,9 +26,14 @@ class AcademicYear extends Model
         'is_active' => 'boolean',
     ];
 
-
     protected static function booted()
     {
+        static::creating(function ($academicYear) {
+            if (empty($academicYear->id)) {
+                $academicYear->id = (string) Str::uuid();
+            }
+        });
+
         static::saving(function ($academicYear) {
             if ($academicYear->is_active) {
                 static::where('id', '!=', $academicYear->id)
@@ -36,17 +42,19 @@ class AcademicYear extends Model
         });
     }
 
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
+
 
     public function schoolClasses()
     {
         return $this->hasMany(\App\Models\SchoolClass::class);
     }
 
-    public function getLabelAttribute()
+    public function getLabelAttribute(): string
     {
         return "{$this->year} – " . ucfirst($this->semester);
     }
