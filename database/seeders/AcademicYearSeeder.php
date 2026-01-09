@@ -10,24 +10,28 @@ class AcademicYearSeeder extends Seeder
 {
     public function run(): void
     {
-        // GANJIL
-        if (! AcademicYear::where('year', '2024/2025')->where('semester', 'Ganjil')->exists()) {
-            AcademicYear::create([
-                'id' => (string) Str::uuid(),
+        // GANJIL (AKTIF)
+        AcademicYear::firstOrCreate(
+            [
                 'year' => '2024/2025',
-                'semester' => 'Ganjil',
+                'semester' => 'ganjil',
+            ],
+            [
+                'id' => (string) Str::uuid(),
                 'is_active' => true,
-            ]);
-        }
+            ]
+        );
 
-        // GENAP
-        if (! AcademicYear::where('year', '2024/2025')->where('semester', 'Genap')->exists()) {
-            AcademicYear::create([
-                'id' => (string) Str::uuid(),
+        // GENAP (NONAKTIF)
+        AcademicYear::firstOrCreate(
+            [
                 'year' => '2024/2025',
-                'semester' => 'Genap',
+                'semester' => 'genap',
+            ],
+            [
+                'id' => (string) Str::uuid(),
                 'is_active' => false,
-            ]);
-        }
+            ]
+        );
     }
 }

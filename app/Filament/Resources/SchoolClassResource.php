@@ -13,6 +13,7 @@ use Filament\Forms\Form;
 use Filament\Tables\Table;
 use App\Filament\Resources\SchoolClassResource\RelationManagers\StudentsRelationManager;
 
+
 class SchoolClassResource extends Resource
 {
     protected static ?string $model = SchoolClass::class;
@@ -30,9 +31,13 @@ class SchoolClassResource extends Resource
                 ->options(
                     AcademicYear::query()
                         ->orderByDesc('is_active')
-                        ->pluck('year', 'id')
+                        ->get()
+                        ->pluck('label', 'id')
                 )
+                ->default(AcademicYear::active()->value('id'))
                 ->required(),
+
+
 
             Forms\Components\Select::make('category')
                 ->label('Kategori')
@@ -66,9 +71,10 @@ class SchoolClassResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('academicYear.year')
+                Tables\Columns\TextColumn::make('academicYear.label')
                     ->label('Tahun Ajaran')
                     ->sortable(),
+
 
                 Tables\Columns\BadgeColumn::make('category')
                     ->label('Kategori'),
