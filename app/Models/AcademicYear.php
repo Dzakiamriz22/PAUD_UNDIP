@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Str;
 
 class AcademicYear extends Model
 {
@@ -25,26 +26,35 @@ class AcademicYear extends Model
         'is_active' => 'boolean',
     ];
 
-    /**
-     * Scope: tahun ajaran aktif
-     */
+    protected static function booted()
+    {
+        static::creating(function ($academicYear) {
+            if (empty($academicYear->id)) {
+                $academicYear->id = (string) Str::uuid();
+            }
+        });
+
+        static::saving(function ($academicYear) {
+            if ($academicYear->is_active) {
+                static::where('id', '!=', $academicYear->id)
+                    ->update(['is_active' => false]);
+            }
+        });
+    }
+
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
-    /**
-     * Relasi ke kelas
-     */
+
     public function schoolClasses()
     {
         return $this->hasMany(\App\Models\SchoolClass::class);
     }
 
-    /**
-     * Label: 2024/2025 – Ganjil
-     */
-    public function getLabelAttribute()
+    public function getLabelAttribute(): string
     {
         return "{$this->year} – " . ucfirst($this->semester);
     }

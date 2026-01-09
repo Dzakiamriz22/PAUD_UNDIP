@@ -87,10 +87,10 @@ class AcademicYearResource extends Resource
 
                 Tables\Actions\EditAction::make(),
 
-                Tables\Actions\DeleteAction::make()
-                    ->visible(fn ($record) => ! $record->is_active)
-                    ->disabled(fn ($record) => $record->schoolClasses()->exists())
-                    ->tooltip('Tidak bisa dihapus jika sudah digunakan oleh kelas'),
+                // Tables\Actions\DeleteAction::make()
+                //     ->visible(fn ($record) => ! $record->is_active)
+                //     ->disabled(fn ($record) => $record->schoolClasses()->exists())
+                //     ->tooltip('Tidak bisa dihapus jika sudah digunakan oleh kelas'),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
