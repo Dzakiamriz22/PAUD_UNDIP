@@ -24,4 +24,28 @@ class AcademicYear extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    /**
+     * Scope: tahun ajaran aktif
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Relasi ke kelas
+     */
+    public function schoolClasses()
+    {
+        return $this->hasMany(\App\Models\SchoolClass::class);
+    }
+
+    /**
+     * Label: 2024/2025 – Ganjil
+     */
+    public function getLabelAttribute()
+    {
+        return "{$this->year} – " . ucfirst($this->semester);
+    }
 }

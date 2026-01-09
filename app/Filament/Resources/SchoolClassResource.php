@@ -30,9 +30,12 @@ class SchoolClassResource extends Resource
                 ->options(
                     AcademicYear::query()
                         ->orderByDesc('is_active')
-                        ->pluck('year', 'id')
+                        ->get()
+                        ->pluck('label', 'id')
                 )
+                ->default(AcademicYear::active()->value('id'))
                 ->required(),
+
 
             Forms\Components\Select::make('category')
                 ->label('Kategori')
@@ -106,8 +109,17 @@ class SchoolClassResource extends Resource
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\DeleteBulkAction::make()
+                    ->label('Hapus (Kosongkan Kelas)')
+                    ->before(function ($records) {
+                        foreach ($records as $class) {
+                            StudentClassHistory::where('class_id', $class->id)
+                                ->where('is_active', true)
+                                ->update(['is_active' => false]);
+                        }
+                    }),
             ]);
+
     }
 
     public static function getRelations(): array
