@@ -12,28 +12,26 @@ use Illuminate\Support\Str;
 class StudentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'students';
-
     protected static ?string $title = 'Siswa di Kelas';
 
     public function form(Forms\Form $form): Forms\Form
     {
-        return $form
-            ->schema([
-                Forms\Components\Select::make('student_id')
-                    ->label('Siswa')
-                    ->options(function () {
-                        $classId = $this->ownerRecord->id;
+        return $form->schema([
+            Forms\Components\Select::make('student_id')
+                ->label('Siswa')
+                ->searchable()
+                ->options(function () {
+                    $class = $this->ownerRecord;
 
-                        return Student::query()
-                            ->whereDoesntHave('classHistories', function ($q) use ($classId) {
-                                $q->where('class_id', $classId)
-                                  ->where('is_active', true);
-                            })
-                            ->pluck('name', 'id');
-                    })
-                    ->searchable()
-                    ->required(),
-            ]);
+                    return Student::query()
+                        ->whereDoesntHave('classHistories', function ($q) use ($class) {
+                            $q->where('academic_year_id', $class->academic_year_id)
+                              ->where('is_active', true);
+                        })
+                        ->pluck('name', 'id');
+                })
+                ->required(),
+        ]);
     }
 
     public function table(Tables\Table $table): Tables\Table
@@ -61,8 +59,9 @@ class StudentsRelationManager extends RelationManager
                     ->using(function (array $data) {
                         $class = $this->ownerRecord;
 
-                        // Nonaktifkan kelas lama siswa
+                        // Nonaktifkan kelas aktif sebelumnya di tahun ajaran yang sama
                         StudentClassHistory::where('student_id', $data['student_id'])
+                            ->where('academic_year_id', $class->academic_year_id)
                             ->where('is_active', true)
                             ->update(['is_active' => false]);
 
@@ -76,11 +75,12 @@ class StudentsRelationManager extends RelationManager
                     }),
             ])
             ->actions([
-                Tables\Actions\Action::make('nonaktifkan')
-                    ->label('Nonaktifkan')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
+                Tables\Actions\Action::make('keluarkan')
+                    ->label('Keluarkan dari Kelas')
+                    ->icon('heroicon-o-arrow-right-on-rectangle')
+                    ->color('warning')
                     ->visible(fn ($record) => $record->is_active)
+                    ->requiresConfirmation()
                     ->action(fn ($record) => $record->update(['is_active' => false])),
             ]);
     }

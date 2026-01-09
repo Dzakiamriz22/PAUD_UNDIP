@@ -38,7 +38,6 @@ class SchoolClassResource extends Resource
                 ->required(),
 
 
-
             Forms\Components\Select::make('category')
                 ->label('Kategori')
                 ->options([
@@ -112,8 +111,17 @@ class SchoolClassResource extends Resource
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\DeleteBulkAction::make()
+                    ->label('Hapus (Kosongkan Kelas)')
+                    ->before(function ($records) {
+                        foreach ($records as $class) {
+                            StudentClassHistory::where('class_id', $class->id)
+                                ->where('is_active', true)
+                                ->update(['is_active' => false]);
+                        }
+                    }),
             ]);
+
     }
 
     public static function getRelations(): array
