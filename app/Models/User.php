@@ -138,13 +138,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, 
      */
     public function homeroomClasses()
     {
-        return $this->hasMany(
-            \App\Models\SchoolClass::class,
-            'homeroom_teacher_id'
-        );
+        return $this->hasMany(\App\Models\SchoolClass::class, 'homeroom_teacher_id');
     }
-
-
 
     /* ===================== AUTHORIZATION HELPERS ===================== */
 
