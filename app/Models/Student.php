@@ -19,6 +19,7 @@ class Student extends Model
         'gender',
         'birth_date',
         'parent_name',
+        'parent_contact',
         'status',
     ];
 

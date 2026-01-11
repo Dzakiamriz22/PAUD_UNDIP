@@ -13,7 +13,8 @@ class EditSchoolClass extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->visible(fn () => auth()->user()->isSuperAdmin() || auth()->user()->hasRole('admin')),
         ];
     }
 }

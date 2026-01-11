@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\StudentResource\Pages;
+use App\Filament\Resources\StudentResource\RelationManagers\ClassHistoriesRelationManager;
 use App\Models\Student;
 use Filament\Forms;
 use Filament\Tables;
@@ -15,8 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
-use App\Filament\Resources\StudentResource\RelationManagers\ClassHistoriesRelationManager;
-
+use Illuminate\Database\Eloquent\Builder;
 
 class StudentResource extends Resource
 {
@@ -26,6 +26,32 @@ class StudentResource extends Resource
     protected static ?string $navigationGroup = 'Akademik';
     protected static ?string $navigationLabel = 'Siswa';
     protected static ?string $pluralLabel = 'Siswa';
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = auth()->user();
+
+        if (
+            $user->isSuperAdmin()
+            || $user->hasRole('admin')
+            || $user->isKepsek()
+            || $user->isBendahara()
+        ) {
+            return $query;
+        }
+
+        if ($user->isGuru()) {
+            return $query->whereHas('classHistories', function ($q) use ($user) {
+                $q->where('is_active', true)
+                  ->whereHas('classRoom', function ($c) use ($user) {
+                      $c->where('homeroom_teacher_id', $user->id);
+                  });
+            });
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
 
     public static function form(Form $form): Form
     {
@@ -58,6 +84,12 @@ class StudentResource extends Resource
                         TextInput::make('parent_name')
                             ->label('Nama Orang Tua')
                             ->required(),
+                        
+                        TextInput::make('parent_contact')
+                            ->label('Kontak Orang Tua')
+                            ->placeholder('No HP / WA')
+                            ->tel(),
+
 
                         Select::make('status')
                             ->options([
@@ -136,7 +168,6 @@ class StudentResource extends Resource
             ClassHistoriesRelationManager::class,
         ];
     }
-
 
     public static function getPages(): array
     {

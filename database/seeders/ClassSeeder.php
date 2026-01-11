@@ -11,7 +11,7 @@ class ClassSeeder extends Seeder
 {
     public function run(): void
     {
-        $year = AcademicYear::where('is_active', true)->first();
+        $year = AcademicYear::where('is_active', true)->firstOrFail();
 
         $classes = [
             ['category' => 'TK', 'code' => 'A1'],
@@ -21,17 +21,22 @@ class ClassSeeder extends Seeder
         ];
 
         foreach ($classes as $class) {
-            SchoolClass::updateOrCreate(
-                [
+
+            $existing = SchoolClass::where([
+                'category' => $class['category'],
+                'code' => $class['code'],
+                'academic_year_id' => $year->id,
+            ])->first();
+
+            if (! $existing) {
+                SchoolClass::create([
+                    'id' => (string) Str::uuid(),
                     'category' => $class['category'],
                     'code' => $class['code'],
                     'academic_year_id' => $year->id,
-                ],
-                [
-                    'id' => (string) Str::uuid(),
                     'homeroom_teacher_id' => null,
-                ]
-            );
+                ]);
+            }
         }
     }
 }

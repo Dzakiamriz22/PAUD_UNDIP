@@ -14,6 +14,23 @@ class StudentsRelationManager extends RelationManager
     protected static string $relationship = 'students';
     protected static ?string $title = 'Siswa di Kelas';
 
+    /**
+     * 🔒 Hanya Admin yang boleh assign siswa
+     */
+    public function canCreate(): bool
+    {
+        return auth()->user()->isSuperAdmin()
+            || auth()->user()->hasRole('admin');
+    }
+
+    /**
+     * 🔒 Tidak ada delete hard (pakai action keluarkan)
+     */
+    public function canDelete($record): bool
+    {
+        return false;
+    }
+
     public function form(Forms\Form $form): Forms\Form
     {
         return $form->schema([
@@ -56,6 +73,10 @@ class StudentsRelationManager extends RelationManager
             ->headerActions([
                 Tables\Actions\CreateAction::make()
                     ->label('Assign Siswa')
+                    ->visible(fn () =>
+                        auth()->user()->isSuperAdmin()
+                        || auth()->user()->hasRole('admin')
+                    )
                     ->using(function (array $data) {
                         $class = $this->ownerRecord;
 
@@ -79,9 +100,14 @@ class StudentsRelationManager extends RelationManager
                     ->label('Keluarkan dari Kelas')
                     ->icon('heroicon-o-arrow-right-on-rectangle')
                     ->color('warning')
-                    ->visible(fn ($record) => $record->is_active)
                     ->requiresConfirmation()
-                    ->action(fn ($record) => $record->update(['is_active' => false])),
+                    ->visible(fn () =>
+                        auth()->user()->isSuperAdmin()
+                        || auth()->user()->hasRole('admin')
+                    )
+                    ->action(fn ($record) =>
+                        $record->update(['is_active' => false])
+                    ),
             ]);
     }
 }
