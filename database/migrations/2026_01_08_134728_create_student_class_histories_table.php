@@ -14,6 +14,7 @@ return new class extends Migration {
             $table->foreignUuid('academic_year_id');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+            
             $table->foreign('student_id')->references('id')->on('students')->cascadeOnDelete();
             $table->foreign('class_id')->references('id')->on('classes')->cascadeOnDelete();
             $table->foreign('academic_year_id')->references('id')->on('academic_years')->cascadeOnDelete();

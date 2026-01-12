@@ -126,13 +126,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, 
         return true;
     }
 
-    /* ===================== RELATIONS ===================== */
-
-    public function recipients(): HasOne
-    {
-        return $this->hasOne(BookingOrderRecipient::class, 'user_id');
-    }
-
     /**
      * Kelas yang diampu sebagai wali kelas
      */

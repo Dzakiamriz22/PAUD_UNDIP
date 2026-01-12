@@ -15,10 +15,10 @@ class Kernel extends ConsoleKernel
         // $schedule->command('inspire')->hourly();
         
         // Expire pending bookings every minute
-        $schedule->command('bookings:expire-pending')
-            ->everyMinute()
-            ->withoutOverlapping()
-            ->runInBackground();
+        // $schedule->command('bookings:expire-pending')
+        //     ->everyMinute()
+        //     ->withoutOverlapping()
+        //     ->runInBackground();
     }
 
     /**

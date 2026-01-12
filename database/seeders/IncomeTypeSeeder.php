@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\IncomeType;
-use Illuminate\Support\Str;
 
 class IncomeTypeSeeder extends Seeder
 {
@@ -12,15 +11,22 @@ class IncomeTypeSeeder extends Seeder
     {
         $types = [
             'SPP Bulanan',
-            'Uang Pangkal',
-            'Seragam',
-            'Kegiatan Tahunan',
+            'SPP Harian',
+            'Uang Pendaftaran',
+            'Biaya Seragam',
+            'Biaya Sarana & Prasarana',
+            'Biaya Perlengkapan & Kegiatan',
+            'Denda Keterlambatan',
+            'Daftar Ulang TPA',
         ];
 
-        foreach ($types as $type) {
-            IncomeType::updateOrCreate(
-                ['name' => $type],
-                ['id' => Str::uuid()]
+        foreach ($types as $name) {
+            IncomeType::firstOrCreate(
+                ['name' => $name],
+                [
+                    'is_discount' => false,
+                    'is_active' => true,
+                ]
             );
         }
     }

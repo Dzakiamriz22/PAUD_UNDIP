@@ -3,30 +3,40 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Str;
 
 class InvoiceItem extends Model
 {
-    use HasFactory;
-
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
-        'id',
         'invoice_id',
-        'income_type_id',
-        'amount',
+        'tariff_id',
         'description',
+        'amount',
     ];
+
+    protected $casts = [
+        'amount' => 'decimal:2',
+    ];
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            if (! $model->id) {
+                $model->id = (string) Str::uuid();
+            }
+        });
+    }
 
     public function invoice()
     {
         return $this->belongsTo(Invoice::class);
     }
 
-    public function incomeType()
+    public function tariff()
     {
-        return $this->belongsTo(IncomeType::class);
+        return $this->belongsTo(Tariff::class);
     }
 }
