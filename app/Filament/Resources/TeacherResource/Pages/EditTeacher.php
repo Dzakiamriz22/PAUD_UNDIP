@@ -3,8 +3,8 @@
 namespace App\Filament\Resources\TeacherResource\Pages;
 
 use App\Filament\Resources\TeacherResource;
-use Filament\Resources\Pages\EditRecord;
 use App\Models\SchoolClass;
+use Filament\Resources\Pages\EditRecord;
 
 class EditTeacher extends EditRecord
 {
@@ -12,17 +12,19 @@ class EditTeacher extends EditRecord
 
     protected function afterSave(): void
     {
-        $roles = $this->data['roles'];
-        $this->record->syncRoles($roles);
+        $data = $this->form->getState();
+        $user = $this->record;
 
-        \App\Models\SchoolClass::where('homeroom_teacher_id', $this->record->id)
-            ->update(['homeroom_teacher_id' => null]);
+        if (isset($data['homeroom_classes'])) {
 
-        if (in_array('guru', $roles)) {
-            \App\Models\SchoolClass::whereIn('id', $this->data['homeroom_classes'] ?? [])
-                ->update([
-                    'homeroom_teacher_id' => $this->record->id,
-                ]);
+            // Lepas kelas yang tidak dipilih
+            SchoolClass::where('homeroom_teacher_id', $user->id)
+                ->whereNotIn('id', $data['homeroom_classes'])
+                ->update(['homeroom_teacher_id' => null]);
+
+            // Assign kelas baru
+            SchoolClass::whereIn('id', $data['homeroom_classes'])
+                ->update(['homeroom_teacher_id' => $user->id]);
         }
     }
 }

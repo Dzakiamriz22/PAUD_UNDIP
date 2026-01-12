@@ -6,7 +6,7 @@ use App\Filament\Resources\TeacherResource;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use App\Models\SchoolClass;
+use Illuminate\Validation\ValidationException;
 
 class CreateTeacher extends CreateRecord
 {
@@ -14,25 +14,19 @@ class CreateTeacher extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $data['username'] = Str::slug(
-            $data['firstname'] . ' ' . $data['lastname']
-        );
+        if (
+            isset($data['roles'])
+            && in_array('bendahara', $data['roles'])
+            && in_array('kepala_sekolah', $data['roles'])
+        ) {
+            throw ValidationException::withMessages([
+                'roles' => 'Bendahara tidak boleh merangkap Kepala Sekolah.',
+            ]);
+        }
 
-        $data['password'] = Hash::make('password123');
+        $data['id'] = (string) Str::uuid();
+        $data['password'] = Hash::make('paudpermataundip');
 
         return $data;
-    }
-
-    protected function afterCreate(): void
-    {
-        $roles = $this->data['roles'];
-        $this->record->syncRoles($roles);
-
-        if (in_array('guru', $roles)) {
-            \App\Models\SchoolClass::whereIn('id', $this->data['homeroom_classes'] ?? [])
-                ->update([
-                    'homeroom_teacher_id' => $this->record->id,
-                ]);
-        }
     }
 }
