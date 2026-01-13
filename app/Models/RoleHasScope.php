@@ -43,7 +43,7 @@ class RoleHasScope extends Model
     public static function getAvailableScopes(): array
     {
         return [
-            \App\Models\Unit::class => 'Unit',
+            \App\Models\SchoolClass::class => 'Kelas',
         ];
     }
 }
