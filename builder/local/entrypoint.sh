@@ -7,7 +7,7 @@ echo "Installing composer dependencies..."
 composer install
 
 echo "Running migrations..."
-# php artisan migrate --force --seed
+php artisan migrate --force --seed
 php artisan permission:create-permission delete-backup
 php artisan permission:create-permission download-backup
 
