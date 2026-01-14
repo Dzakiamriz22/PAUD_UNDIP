@@ -69,9 +69,9 @@ class RoleHasScopeResource extends Resource
 
                         $result = $query->get()
                             ->mapWithKeys(function ($record) {
-                                $label = $record->name;
+                                $label = $record->category;
                                 if (! empty($record->code)) {
-                                    $label = "{$record->code} | {$record->name}";
+                                    $label = "{$record->code} | {$record->category}";
                                 }
 
                                 return [
@@ -131,7 +131,7 @@ class RoleHasScopeResource extends Resource
                         return class_basename($state);
                     }),
 
-                Tables\Columns\TextColumn::make('scope.name')
+                Tables\Columns\TextColumn::make('scope.category')
                     ->label('Scope Name'),
 
                 Tables\Columns\TextColumn::make('created_at')
