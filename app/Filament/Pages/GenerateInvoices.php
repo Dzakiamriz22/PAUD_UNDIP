@@ -19,15 +19,16 @@ use App\Models\Student;
 use App\Models\VirtualAccount;
 
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class GenerateInvoices extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-plus';
+    protected static ?string $navigationIcon  = 'heroicon-o-document-plus';
     protected static ?string $navigationLabel = 'Generate Invoice';
     protected static ?string $navigationGroup = 'Keuangan';
-    protected static string $view = 'filament.pages.generate-invoices';
+    protected static string $view             = 'filament.pages.generate-invoices';
 
     public array $data = [];
 
@@ -40,28 +41,22 @@ class GenerateInvoices extends Page implements HasForms
             ->schema([
 
                 /* ===== TAHUN AJARAN ===== */
-
                 Forms\Components\Select::make('academic_year_id')
                     ->label('Tahun Ajaran')
                     ->required()
                     ->options(
-                        AcademicYear::query()
-                            ->get()
-                            ->mapWithKeys(fn ($ay) => [
-                                $ay->id => "{$ay->year} — " . ucfirst($ay->semester),
-                            ])
+                        AcademicYear::all()->mapWithKeys(fn ($ay) => [
+                            $ay->id => "{$ay->year} — " . ucfirst($ay->semester),
+                        ])
                     ),
 
                 /* ===== KELAS ===== */
-
                 Forms\Components\Select::make('class_id')
                     ->label('Kelas')
                     ->required()
                     ->reactive()
                     ->options(SchoolClass::pluck('code', 'id'))
                     ->afterStateUpdated(function (callable $set, $state) {
-
-                        // ⬇️ Default: pilih SEMUA siswa di kelas
                         $studentIds = Student::whereHas('activeClass', fn ($q) =>
                             $q->where('class_id', $state)
                         )->pluck('id')->toArray();
@@ -69,15 +64,13 @@ class GenerateInvoices extends Page implements HasForms
                         $set('student_ids', $studentIds);
                     }),
 
-                /* ===== SISWA (DEFAULT SEMUA TERPILIH) ===== */
-
+                /* ===== SISWA ===== */
                 Forms\Components\CheckboxList::make('student_ids')
                     ->label('Siswa')
                     ->columns(2)
                     ->required()
-                    ->helperText('Hilangkan centang untuk siswa yang tidak ingin dibuatkan invoice')
+                    ->helperText('Centang siswa yang akan dibuatkan invoice')
                     ->options(function (callable $get) {
-
                         if (! $get('class_id')) {
                             return [];
                         }
@@ -90,13 +83,11 @@ class GenerateInvoices extends Page implements HasForms
                     }),
 
                 /* ===== JENIS PEMBAYARAN ===== */
-
                 Forms\Components\Select::make('income_type_id')
                     ->label('Jenis Pembayaran')
                     ->required()
                     ->reactive()
                     ->options(function (callable $get) {
-
                         if (! $get('class_id')) {
                             return [];
                         }
@@ -110,12 +101,10 @@ class GenerateInvoices extends Page implements HasForms
                     }),
 
                 /* ===== TARIF ===== */
-
                 Forms\Components\Select::make('tariff_id')
                     ->label('Tarif')
                     ->required()
                     ->options(function (callable $get) {
-
                         if (! $get('class_id') || ! $get('income_type_id')) {
                             return [];
                         }
@@ -134,7 +123,6 @@ class GenerateInvoices extends Page implements HasForms
                     }),
 
                 /* ===== VIRTUAL ACCOUNT ===== */
-
                 Forms\Components\Select::make('virtual_account_id')
                     ->label('Virtual Account')
                     ->required()
@@ -153,13 +141,16 @@ class GenerateInvoices extends Page implements HasForms
             ]);
     }
 
-    /* ================= ACTION ================= */
+    /* ================= GENERATE & DOWNLOAD ================= */
 
-    public function generate(): void
+    public function generate()
     {
         $data = $this->data;
+        $createdInvoiceIds = [];
 
-        DB::transaction(function () use ($data) {
+        DB::beginTransaction();
+
+        try {
 
             $class    = SchoolClass::findOrFail($data['class_id']);
             $students = Student::whereIn('id', $data['student_ids'])->get();
@@ -179,6 +170,7 @@ class GenerateInvoices extends Page implements HasForms
                     'va_number'        => $va->va_number,
                     'va_bank'          => $va->bank_name,
                     'due_date'         => $data['due_date'],
+                    'status'           => 'unpaid',
                 ]);
 
                 InvoiceItem::create([
@@ -191,14 +183,45 @@ class GenerateInvoices extends Page implements HasForms
                 ]);
 
                 $invoice->recalculateTotal();
+
+                $createdInvoiceIds[] = $invoice->id;
             }
-        });
 
-        Notification::make()
-            ->title('Invoice berhasil digenerate')
-            ->success()
-            ->send();
+            DB::commit();
 
-        $this->form->fill([]);
+            /* ===== PDF LANGSUNG DOWNLOAD ===== */
+            $invoices = Invoice::with([
+                'student.activeClass.classRoom',
+                'academicYear',
+                'incomeType',
+                'items',
+            ])->whereIn('id', $createdInvoiceIds)->get();
+
+            $pdf = Pdf::loadView('pdf.batch-invoice', [
+                'invoices' => $invoices,
+            ])->setPaper('A4');
+
+            Notification::make()
+                ->title('Invoice berhasil digenerate')
+                ->success()
+                ->send();
+
+            return response()->streamDownload(
+                fn () => print($pdf->output()),
+                'invoice-' . now()->format('Ymd-His') . '.pdf'
+            );
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            Notification::make()
+                ->title('Gagal generate invoice')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+
+            return null;
+        }
     }
 }
