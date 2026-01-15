@@ -29,33 +29,14 @@ class RoleResource extends Resource implements HasShieldPermissions
      * @var array<string,string>
      */
     protected static array $roleLabels = [
-        // Operator
-        'kasir_unit' => 'Kasir Unit',
-        'customer_services' => 'Customer Services',
-        'operator_unit' => 'Operator Aset Unit',
-        'customer' => 'Pelanggan / Mitra',
-        'keu_pusat' => 'Keuangan Pusat (Dir KAP)',
-
-        // Verifikator
-        'qc_produk' => 'Quality Control Produk',
-        'ver_pembayaran' => 'Verifikator Pembayaran',
-        'ver_pajak' => 'Verifikator Perpajakan (Dir KAP)',
-        'spv_unit' => 'SPV Unit',
-        'manajer_upkab' => 'Manajer UPKAB',
-
-        // Otorisator
-        'ka_upkab' => 'Kepala UPKAB',
-        'ka_bpubikar' => 'Kepala BP UBIKAR',
-        'wakil_rektor' => 'Wakil Rektor 2',
 
         // Administrator
         'super_admin' => 'Super Admin',
-        'spv_ubikar' => 'SPV BP UBIKAR',
-        'spv_pajak' => 'SPV Perpajakan',
-
-        // Auditor
-        'auditor_int' => 'Auditor Internal',
-        'auditor_eks' => 'Auditor Eksternal',
+        'admin' => 'Admin',
+        'operator' => 'Operator',
+        'guru' => 'Guru',
+        'bendahara' => 'Bendahara',
+        'kepala_sekolah' => 'Kepala Sekolah',
     ];
 
     public static function getRoleLabel(string $key): string
