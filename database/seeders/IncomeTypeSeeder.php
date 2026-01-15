@@ -10,22 +10,27 @@ class IncomeTypeSeeder extends Seeder
     public function run(): void
     {
         $types = [
-            'SPP Bulanan',
-            'SPP Harian',
-            'Uang Pendaftaran',
-            'Biaya Seragam',
-            'Biaya Sarana & Prasarana',
-            'Biaya Perlengkapan & Kegiatan',
-            'Denda Keterlambatan',
-            'Daftar Ulang TPA',
+            // Biaya utama
+            ['Uang Pendaftaran', false],
+            ['Biaya Sarana & Prasarana', false],
+            ['Biaya Perlengkapan & Kegiatan', false],
+            ['Biaya Seragam', false],
+            ['SPP Siswa Lama', false],
+            ['SPP Harian', false],
+            ['Denda Keterlambatan', false],
+            ['Daftar Ulang TPA', false],
+
+            // Diskon
+            ['Diskon Alumni KB Permata Undip', true],
+            ['Diskon Sarana & Prasarana Anak Kembar', true],
         ];
 
-        foreach ($types as $name) {
+        foreach ($types as [$name, $isDiscount]) {
             IncomeType::firstOrCreate(
                 ['name' => $name],
                 [
-                    'is_discount' => false,
-                    'is_active' => true,
+                    'is_discount' => $isDiscount,
+                    'is_active'   => false,
                 ]
             );
         }

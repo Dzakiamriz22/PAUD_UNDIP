@@ -13,26 +13,27 @@ class ClassSeeder extends Seeder
     {
         $year = AcademicYear::where('is_active', true)->firstOrFail();
 
-        $classes = [
-            ['category' => 'TK', 'code' => 'A1'],
-            ['category' => 'TK', 'code' => 'A2'],
-            ['category' => 'TK', 'code' => 'B1'],
-            ['category' => 'KB', 'code' => 'KB1'],
+        $categories = [
+            'TK',
+            'KB',
+            'TPA_PAUD',
+            'TPA_SD',
+            'TPA_TK',
+            'TPA_KB',
         ];
 
-        foreach ($classes as $class) {
-
-            $existing = SchoolClass::where([
-                'category' => $class['category'],
-                'code' => $class['code'],
+        foreach ($categories as $category) {
+            $exists = SchoolClass::where([
+                'category' => $category,
+                'code' => $category,
                 'academic_year_id' => $year->id,
-            ])->first();
+            ])->exists();
 
-            if (! $existing) {
+            if (! $exists) {
                 SchoolClass::create([
                     'id' => (string) Str::uuid(),
-                    'category' => $class['category'],
-                    'code' => $class['code'],
+                    'category' => $category,
+                    'code' => $category,
                     'academic_year_id' => $year->id,
                     'homeroom_teacher_id' => null,
                 ]);

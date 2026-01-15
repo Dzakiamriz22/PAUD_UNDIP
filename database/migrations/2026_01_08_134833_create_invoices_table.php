@@ -9,7 +9,7 @@ return new class extends Migration {
     {
         Schema::create('invoices', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('invoice_number')->unique();
+            $table->string('invoice_number')->nullable()->unique();
             $table->foreignUuid('student_id');
             $table->foreignUuid('class_id');
             $table->foreignUuid('academic_year_id');
