@@ -30,6 +30,18 @@ class Tariff extends Model
         'approved_at' => 'datetime',
     ];
 
+    public function getBillingTypeLabelAttribute(): string
+    {
+        return match ($this->billing_type) {
+            'once' => 'Sekali Bayar',
+            'monthly' => 'Bulanan',
+            'yearly' => 'Tahunan',
+            'daily' => 'Harian',
+            'penalty' => 'Denda',
+            default => '-',
+        };
+    }
+
     /* ================= UUID AUTO ================= */
     protected static function booted()
     {

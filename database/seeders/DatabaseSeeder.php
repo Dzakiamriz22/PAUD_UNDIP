@@ -17,8 +17,9 @@ class DatabaseSeeder extends Seeder
             StudentSeeder::class,
             StudentClassHistorySeeder::class,
             UserSeeder::class,
-            TariffSeeder::class,
             IncomeTypeSeeder::class,
+            TariffSeeder::class,
+            VirtualAccountSeeder::class,
         ]);
     }
 }

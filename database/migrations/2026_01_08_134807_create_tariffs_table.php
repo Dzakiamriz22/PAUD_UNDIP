@@ -19,7 +19,13 @@ return new class extends Migration {
                 'TPA_KB',
             ]);
             $table->decimal('amount', 12, 2);
-            $table->enum('billing_type', ['once', 'monthly', 'yearly']);
+            $table->enum('billing_type', [
+                'once',
+                'monthly',
+                'yearly',
+                'daily',
+                'penalty',
+            ]);
             $table->boolean('is_active')->default(true);
 
             $table->foreignUuid('proposed_by')->nullable();
