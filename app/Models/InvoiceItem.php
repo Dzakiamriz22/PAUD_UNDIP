@@ -3,30 +3,32 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class InvoiceItem extends Model
 {
-    protected $keyType = 'string';
-    public $incrementing = false;
+    use HasUuids;
 
     protected $fillable = [
         'invoice_id',
         'tariff_id',
+        'original_amount',
+        'discount_amount',
+        'final_amount',
         'description',
-        'amount',
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
+        'original_amount' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'final_amount' => 'decimal:2',
     ];
 
     protected static function booted()
     {
-        static::creating(function ($model) {
-            if (! $model->id) {
-                $model->id = (string) Str::uuid();
-            }
+        static::saving(function ($item) {
+            $item->final_amount =
+                $item->original_amount - $item->discount_amount;
         });
     }
 

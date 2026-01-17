@@ -22,118 +22,158 @@ class TariffResource extends Resource
     protected static ?string $navigationLabel = 'Tarif';
     protected static ?string $pluralLabel = 'Tarif';
 
+    /* =====================================================
+     |  KONSTANTA (TANPA FILE BARU)
+     ===================================================== */
+    public const CLASS_CATEGORIES = [
+        'TK' => 'TK',
+        'KB' => 'KB',
+        'TPA_PAUD' => 'TPA PAUD',
+        'TPA_SD' => 'TPA SD',
+        'TPA_TK' => 'TPA + TK',
+        'TPA_KB' => 'TPA + KB',
+    ];
+
+    public const BILLING_TYPES = [
+        'once'    => 'Sekali Bayar',
+        'monthly' => 'Bulanan',
+        'yearly'  => 'Tahunan',
+        'daily'   => 'Harian',
+        'penalty' => 'Denda',
+    ];
+
+    /* =====================================================
+     |  FORM
+     ===================================================== */
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\Select::make('income_type_id')
-                    ->label('Jenis Pendapatan')
-                    ->options(
-                        IncomeType::query()
-                            ->where('is_discount', false)
-                            ->pluck('name', 'id')
-                    )
-                    ->required()
-                    ->searchable(),
+        return $form->schema([
+            Forms\Components\Section::make('Informasi Tarif')
+                ->schema([
+                    Forms\Components\Select::make('income_type_id')
+                        ->label('Jenis Pendapatan')
+                        ->relationship('incomeType', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->required(),
 
-                Forms\Components\Select::make('class_category')
-                    ->label('Kategori Kelas')
-                    ->required()
-                    ->options([
-                        'TK' => 'TK',
-                        'KB' => 'KB',
-                        'TPA_PAUD' => 'TPA PAUD',
-                        'TPA_SD' => 'TPA SD',
-                        'TPA_TK' => 'TPA + TK',
-                        'TPA_KB' => 'TPA + KB',
-                    ]),
+                    Forms\Components\Select::make('class_category')
+                        ->label('Kategori Kelas')
+                        ->options(self::CLASS_CATEGORIES)
+                        ->required(),
 
-                Forms\Components\Select::make('billing_type')
-                    ->label('Jenis Pembayaran')
-                    ->required()
-                    ->options([
-                        'once' => 'Sekali Bayar',
-                        'monthly' => 'Bulanan',
-                        'yearly' => 'Tahunan',
-                    ]),
+                    Forms\Components\Select::make('billing_type')
+                        ->label('Jenis Pembayaran')
+                        ->options(self::BILLING_TYPES)
+                        ->required(),
 
-                Forms\Components\TextInput::make('amount')
-                    ->label('Nominal Tarif')
-                    ->required()
-                    ->numeric()
-                    ->prefix('Rp'),
+                    Forms\Components\TextInput::make('amount')
+                        ->label('Nominal Tarif')
+                        ->numeric()
+                        ->prefix('Rp')
+                        ->required(),
 
-                Forms\Components\Toggle::make('is_active')
-                    ->label('Aktif')
-                    ->default(true),
+                    Forms\Components\Toggle::make('is_active')
+                        ->label('Aktif')
+                        ->default(true),
+                ])
+                ->columns(2),
 
-                Forms\Components\Hidden::make('proposed_by')
-                    ->default(fn () => Auth::id()),
-            ]);
+            Forms\Components\Hidden::make('proposed_by')
+                ->default(fn () => Auth::id()),
+        ]);
     }
 
+    /* =====================================================
+     |  TABLE
+     ===================================================== */
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('income_type_id')
+                Tables\Columns\TextColumn::make('incomeType.name')
                     ->label('Jenis Pendapatan')
-                    ->state(fn (Tariff $record) => $record->incomeType?->name ?? '-'),
+                    ->sortable()
+                    ->searchable(),
 
                 Tables\Columns\TextColumn::make('class_category')
                     ->label('Kategori Kelas')
                     ->badge(),
 
                 Tables\Columns\TextColumn::make('billing_type')
-                    ->label('Pembayaran')
-                    ->formatStateUsing(fn ($state) => match ($state) {
-                        'once' => 'Sekali',
-                        'monthly' => 'Bulanan',
-                        'yearly' => 'Tahunan',
-                    })
+                    ->label('Jenis Pembayaran')
+                    ->formatStateUsing(fn ($state) => self::BILLING_TYPES[$state] ?? '-')
                     ->badge(),
 
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Nominal')
-                    ->money('IDR'),
+                    ->money('IDR')
+                    ->sortable(),
 
                 Tables\Columns\IconColumn::make('approved_at')
                     ->label('Disetujui')
-                    ->boolean(fn ($record) => $record->approved_at !== null),
+                    ->boolean(),
 
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Aktif')
                     ->boolean(),
             ])
+
+            /* ================= FILTER ================= */
+            ->filters([
+                Tables\Filters\SelectFilter::make('income_type_id')
+                    ->label('Jenis Pendapatan')
+                    ->relationship('incomeType', 'name'),
+
+                Tables\Filters\SelectFilter::make('class_category')
+                    ->label('Kategori Kelas')
+                    ->options(self::CLASS_CATEGORIES),
+
+                Tables\Filters\SelectFilter::make('billing_type')
+                    ->label('Jenis Pembayaran')
+                    ->options(self::BILLING_TYPES),
+
+                Tables\Filters\TernaryFilter::make('approved_at')
+                    ->label('Status Persetujuan')
+                    ->nullable()
+                    ->trueLabel('Disetujui')
+                    ->falseLabel('Belum Disetujui'),
+            ])
+
+            /* ================= ACTION ================= */
             ->actions([
                 Tables\Actions\Action::make('approve')
                     ->label('Setujui')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn ($record) => is_null($record->approved_at))
-                    ->action(function (Tariff $record) {
-                        $record->update([
-                            'approved_by' => Auth::id(),
-                            'approved_at' => now(),
-                        ]);
-                    }),
+                    ->visible(fn (Tariff $record) => is_null($record->approved_at))
+                    ->action(fn (Tariff $record) => $record->update([
+                        'approved_by' => Auth::id(),
+                        'approved_at' => now(),
+                    ])),
 
                 Tables\Actions\EditAction::make()
-                    ->visible(fn ($record) => is_null($record->approved_at)),
+                    ->visible(fn (Tariff $record) => is_null($record->approved_at)),
 
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn ($record) => is_null($record->approved_at)),
+                    ->visible(fn (Tariff $record) => is_null($record->approved_at)),
             ])
+
             ->defaultSort('created_at', 'desc');
     }
 
-
+    /* =====================================================
+     |  QUERY
+     ===================================================== */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
             ->with('incomeType');
     }
 
+    /* =====================================================
+     |  PAGES
+     ===================================================== */
     public static function getPages(): array
     {
         return [
