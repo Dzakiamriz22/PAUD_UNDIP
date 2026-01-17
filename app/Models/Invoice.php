@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Support\Str;
-use App\Models\SchoolClass;
 use App\Services\InvoiceNumberGenerator;
 
 class Invoice extends Model
@@ -15,14 +14,15 @@ class Invoice extends Model
 
     protected $fillable = [
         'student_id',
-        'class_id',
         'academic_year_id',
-        'income_type_id',
         'invoice_number',
         'status',
         'issued_at',
+        'paid_at',
         'due_date',
         'total_amount',
+        'discount_amount',
+        'sub_total',
         'va_number',
         'va_bank',
         'created_by',
@@ -32,6 +32,9 @@ class Invoice extends Model
         'issued_at' => 'date',
         'due_date' => 'date',
         'total_amount' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'sub_total' => 'decimal:2',
+        'paid_at' => 'datetime',
     ];
 
     protected static function booted()
@@ -56,19 +59,9 @@ class Invoice extends Model
         return $this->belongsTo(Student::class);
     }
 
-    public function class()
-    {
-        return $this->belongsTo(SchoolClass::class, 'class_id');
-    }
-
     public function academicYear()
     {
         return $this->belongsTo(AcademicYear::class);
-    }
-
-    public function incomeType()
-    {
-        return $this->belongsTo(IncomeType::class);
     }
 
     public function items()
@@ -78,8 +71,13 @@ class Invoice extends Model
 
     public function recalculateTotal(): void
     {
+        $subTotal = $this->items()->sum('final_amount');
+        $discountAmount = $this->discount_amount ?? 0;
+        $totalAmount = $subTotal - $discountAmount;
+
         $this->updateQuietly([
-            'total_amount' => $this->items()->sum('final_amount'),
+            'sub_total' => $subTotal,
+            'total_amount' => $totalAmount,
         ]);
     }
 }

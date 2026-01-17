@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\Tariff;
 
 class InvoiceItem extends Model
 {
@@ -12,23 +13,29 @@ class InvoiceItem extends Model
     protected $fillable = [
         'invoice_id',
         'tariff_id',
-        'original_amount',
-        'discount_amount',
+        'period_month',
+        'period_year',
+        'period_day',
         'final_amount',
         'description',
     ];
 
     protected $casts = [
-        'original_amount' => 'decimal:2',
-        'discount_amount' => 'decimal:2',
+        'period_month' => 'integer',
+        'period_year' => 'integer',
+        'period_day' => 'date',
         'final_amount' => 'decimal:2',
     ];
 
     protected static function booted()
     {
-        static::saving(function ($item) {
-            $item->final_amount =
-                $item->original_amount - $item->discount_amount;
+        static::creating(function ($item) {
+            if ($item->tariff_id && !$item->final_amount) {
+                $tariff = Tariff::find($item->tariff_id);
+                if ($tariff) {
+                    $item->final_amount = $tariff->amount;
+                }
+            }
         });
     }
 
