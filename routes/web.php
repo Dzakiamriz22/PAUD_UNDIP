@@ -52,3 +52,21 @@ Route::post('/contact', [App\Http\Controllers\ContactController::class, 'submit'
 Route::post('/blog-preview', function () {
     // Implementation pending
 })->name('blog.preview');
+
+// Invoice preview (show HTML preview of invoice before download)
+Route::get('/invoices/{invoice}/preview', function (\App\Models\Invoice $invoice) {
+    $invoice->load([
+        'student.activeClass.classRoom',
+        'academicYear',
+        'incomeType',
+        'items',
+    ]);
+    return view('invoices.preview', compact('invoice'));
+})->name('invoices.preview')->middleware('auth');
+
+// Invoice download (generate and download PDF)
+Route::get('/invoices/{invoice}/download', function (\App\Models\Invoice $invoice, \App\Services\BatchInvoiceService $service) {
+    return $service
+        ->generateSinglePdf($invoice)
+        ->download('invoice-' . str_replace('/', '-', $invoice->invoice_number) . '.pdf');
+})->name('invoices.download')->middleware('auth');
