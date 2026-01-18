@@ -30,19 +30,19 @@ class Login extends BasePage
         }
     }
 
-    public function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                $this->getEmailFormComponent()->label('Email'),
-                // $this->getUsernameFormComponent(),
-                $this->getPasswordFormComponent(),
-                $this->getRememberFormComponent(),
-                \Coderflex\FilamentTurnstile\Forms\Components\Turnstile::make('captcha')
-                    ->hiddenLabel()
-                    ->size('flexible'),
-            ])->statePath('data');
-    }
+    // public function form(Form $form): Form
+    // {
+    //     return $form
+    //         ->schema([
+    //             $this->getEmailFormComponent()->label('Email'),
+    //             // $this->getUsernameFormComponent(),
+    //             $this->getPasswordFormComponent(),
+    //             $this->getRememberFormComponent(),
+    //             \Coderflex\FilamentTurnstile\Forms\Components\Turnstile::make('captcha')
+    //                 ->hiddenLabel()
+    //                 ->size('flexible'),
+    //         ])->statePath('data');
+    // }
 
     // public function getHeading(): string | Htmlable
     // {

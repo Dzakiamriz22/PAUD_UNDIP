@@ -42,4 +42,9 @@ class Student extends Model
     {
         return $this->hasMany(Invoice::class);
     }
+
+    public function invoiceItems()
+    {
+        return $this->hasManyThrough(InvoiceItem::class, Invoice::class);
+    }
 }

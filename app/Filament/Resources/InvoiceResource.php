@@ -435,31 +435,203 @@ class InvoiceResource extends Resource
                         Forms\Components\Section::make('Preview Ringkasan')
                             ->schema([
                                 Forms\Components\Placeholder::make('review_summary')
-                                    ->label('')
-                                    ->content(function ($get) {
-                                        $studentCount = count($get('student_ids') ?? []);
-                                        $items = $get('tariff_items') ?? [];
+                            ->label('Ringkasan Tagihan')
+                            ->content(function ($get) {
+                                $studentIds = $get('student_ids') ?? [];
+                                $studentCount = count($studentIds);
+                                $items = $get('tariff_items') ?? [];
 
-                                        $totalPerSiswa = 0;
-                                        foreach ($items as $item) {
-                                            if (isset($item['tariff_id'])) {
-                                                $totalPerSiswa += (float) (Tariff::find($item['tariff_id'])?->amount ?? 0);
+                                if (empty($items) || $studentCount === 0) {
+                                    return new \Illuminate\Support\HtmlString("<span class='text-gray-400 italic'>Pilih siswa dan komponen biaya untuk melihat ringkasan.</span>");
+                                }
+
+                                // Ambil ID tarif yang dipilih
+                                $tariffIds = collect($items)->pluck('tariff_id')->filter()->toArray();
+
+                                // Ambil data tarif dari DB sekaligus dengan relasi (Eager Loading/Optimized)
+                                $tariffMap = \App\Models\Tariff::with('incomeType')
+                                    ->whereIn('id', $tariffIds)
+                                    ->get()
+                                    ->keyBy('id');
+
+                                $totalPerSiswa = 0;
+                                $breakdownHtml = "";
+
+                                // Helper function untuk mendapatkan nama bulan
+                                $getMonthName = function($month) {
+                                    $months = [
+                                        1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+                                        5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+                                        9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+                                    ];
+                                    return $months[$month] ?? "Bulan {$month}";
+                                };
+
+                                // Helper function untuk menghitung jumlah bulan dalam range
+                                $calculateMonthCount = function($startMonth, $endMonth) {
+                                    $academicYearMonths = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
+                                    $startIndex = array_search((int) $startMonth, $academicYearMonths);
+                                    $endIndex = array_search((int) $endMonth, $academicYearMonths);
+                                    
+                                    if ($startIndex === false || $endIndex === false) {
+                                        return 1;
+                                    }
+                                    
+                                    return ($endIndex - $startIndex) + 1;
+                                };
+
+                                // Helper function untuk menghitung jumlah hari
+                                $calculateDayCount = function($startDate, $endDate) {
+                                    if (!$startDate || !$endDate) {
+                                        return 1;
+                                    }
+                                    
+                                    try {
+                                        $start = new \DateTime($startDate);
+                                        $end = new \DateTime($endDate);
+                                        $diff = $start->diff($end);
+                                        return $diff->days + 1; // +1 karena termasuk hari pertama dan terakhir
+                                    } catch (\Exception $e) {
+                                        return 1;
+                                    }
+                                };
+
+                                // Loop melalui setiap item untuk menghitung dengan periode yang benar
+                                foreach ($items as $item) {
+                                    $tariffId = $item['tariff_id'] ?? null;
+                                    if (!$tariffId || !isset($tariffMap[$tariffId])) {
+                                        continue;
+                                    }
+
+                                    $tariff = $tariffMap[$tariffId];
+                                    $baseAmount = (float) $tariff->amount;
+                                    $periodCount = 1; // Default untuk once, yearly, penalty
+                                    $periodInfo = "";
+
+                                    // Hitung jumlah periode berdasarkan billing_type
+                                    switch ($tariff->billing_type) {
+                                        case 'monthly':
+                                            $startMonth = $item['start_month'] ?? null;
+                                            $endMonth = $item['end_month'] ?? null;
+                                            
+                                            if ($startMonth && $endMonth) {
+                                                $periodCount = $calculateMonthCount($startMonth, $endMonth);
+                                                $startMonthName = $getMonthName($startMonth);
+                                                $endMonthName = $getMonthName($endMonth);
+                                                
+                                                if ($periodCount > 1) {
+                                                    $periodInfo = " ({$startMonthName} - {$endMonthName}, {$periodCount} bulan)";
+                                                } else {
+                                                    $periodInfo = " ({$startMonthName})";
+                                                }
                                             }
-                                        }
+                                            break;
 
-                                        $grandTotal = $totalPerSiswa * $studentCount;
+                                        case 'daily':
+                                            $startDate = $item['start_date'] ?? null;
+                                            $endDate = $item['end_date'] ?? null;
+                                            
+                                            if ($startDate && $endDate) {
+                                                $periodCount = $calculateDayCount($startDate, $endDate);
+                                                $periodInfo = " (" . date('d/m/Y', strtotime($startDate)) . " - " . date('d/m/Y', strtotime($endDate)) . ", {$periodCount} hari)";
+                                            }
+                                            break;
 
-                                        return new HtmlString("
-                                            <div class='space-y-2'>
-                                                <p>Total Siswa: <strong>{$studentCount} Orang</strong></p>
-                                                <p>Tagihan per Siswa: <strong>Rp " . number_format((float) $totalPerSiswa, 0, ',', '.') . "</strong></p>
-                                                <div class='p-3 bg-primary-50 border border-primary-200 rounded-lg'>
-                                                    <p class='text-sm text-primary-700'>Estimasi Total Piutang:</p>
-                                                    <p class='text-2xl font-bold text-primary-800 font-mono'>Rp " . number_format((float) $grandTotal, 0, ',', '.') . "</p>
+                                        case 'yearly':
+                                        case 'once':
+                                            $periodYear = $item['period_year'] ?? null;
+                                            if ($periodYear) {
+                                                $periodInfo = " (Tahun {$periodYear})";
+                                            }
+                                            break;
+                                    }
+
+                                    // Hitung total untuk item ini (base amount × jumlah periode)
+                                    $itemTotal = $baseAmount * $periodCount;
+                                    $totalPerSiswa += $itemTotal;
+
+                                    // Format tampilan
+                                    $formattedBaseAmount = "Rp " . number_format($baseAmount, 0, ',', '.');
+                                    $formattedItemTotal = "Rp " . number_format($itemTotal, 0, ',', '.');
+                                    
+                                    // Ambil informasi detail
+                                    $incomeTypeName = $tariff->incomeType->name ?? '-';
+                                    $billingTypeLabel = match($tariff->billing_type) {
+                                        'once' => 'Sekali Bayar',
+                                        'monthly' => 'Bulanan',
+                                        'yearly' => 'Tahunan',
+                                        'daily' => 'Harian',
+                                        'penalty' => 'Denda',
+                                        default => $tariff->billing_type,
+                                    };
+                                    
+                                    // Membuat baris detail per item dengan informasi lengkap
+                                    $quantityInfo = $periodCount > 1 
+                                        ? "<span class='text-xs text-gray-500 ml-2'>({$formattedBaseAmount} × {$periodCount})</span>"
+                                        : "";
+                                    
+                                    $breakdownHtml .= "
+                                        <div class='py-2 border-b border-gray-100 last:border-0'>
+                                            <div class='flex justify-between items-start mb-1'>
+                                                <div class='flex-1'>
+                                                    <span class='text-sm font-semibold text-gray-900'>{$incomeTypeName}</span>
+                                                    <div class='flex items-center gap-2 mt-0.5 flex-wrap'>
+                                                        <span class='text-xs text-gray-500'>{$billingTypeLabel}{$periodInfo}</span>
+                                                        <span class='text-xs text-gray-400'>•</span>
+                                                        <span class='text-xs text-gray-500'>{$tariff->class_category}</span>
+                                                    </div>
+                                                </div>
+                                                <div class='text-right ml-4'>
+                                                    <span class='font-bold text-gray-900 text-sm block'>{$formattedItemTotal}</span>
+                                                    {$quantityInfo}
                                                 </div>
                                             </div>
-                                        ");
-                                    }),
+                                        </div>";
+                                }
+
+                                $grandTotal = $totalPerSiswa * $studentCount;
+                                $formattedTotalPerSiswa = "Rp " . number_format($totalPerSiswa, 0, ',', '.');
+                                $formattedGrandTotal = "Rp " . number_format($grandTotal, 0, ',', '.');
+
+                                return new \Illuminate\Support\HtmlString("
+                                    <div class='bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-5'>
+                                        <div>
+                                            <p class='text-xs font-bold text-gray-400 uppercase tracking-wider mb-3'>Rincian Biaya per Siswa</p>
+                                            <div class='space-y-1'>
+                                                {$breakdownHtml}
+                                            </div>
+                                            <div class='flex justify-between pt-3 mt-3 border-t-2 border-dashed border-gray-300'>
+                                                <span class='font-bold text-gray-800 text-base'>Subtotal per Siswa</span>
+                                                <span class='font-bold text-primary-600 font-mono text-lg'>{$formattedTotalPerSiswa}</span>
+                                            </div>
+                                        </div>
+
+                                        <div class='pt-4 border-t border-gray-200'>
+                                            <div class='flex items-center justify-between mb-3 text-sm'>
+                                                <span class='text-gray-600'>Jumlah Siswa Terpilih:</span>
+                                                <span class='font-bold text-gray-900 px-3 py-1 bg-gray-100 rounded-md'>{$studentCount} Orang</span>
+                                            </div>
+                                            
+                                            <div class='p-5 bg-gradient-to-r from-primary-50 to-primary-100 rounded-lg border-2 border-primary-200 flex justify-between items-center shadow-sm'>
+                                                <div>
+                                                    <p class='text-xs text-primary-700 font-semibold uppercase tracking-wider mb-1'>Total Piutang Keseluruhan</p>
+                                                    <p class='text-3xl font-black text-primary-800 font-mono leading-none'>
+                                                        {$formattedGrandTotal}
+                                                    </p>
+                                                    <p class='text-xs text-primary-600 mt-2'>
+                                                        {$studentCount} siswa × {$formattedTotalPerSiswa}
+                                                    </p>
+                                                </div>
+                                                <div class='h-14 w-14 bg-primary-200 rounded-full flex items-center justify-center text-primary-700 shadow-inner'>
+                                                    <svg xmlns='http://www.w3.org/2000/svg' class='h-7 w-7' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                                                        <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ");
+                            }),
                             ]),
                     ]),
             ])->columnSpanFull()
