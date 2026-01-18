@@ -21,6 +21,7 @@ use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Grid;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
 
 class InvoiceResource extends Resource
 {
@@ -820,6 +821,15 @@ class InvoiceResource extends Resource
                         'success' => 'paid',
                         'gray' => 'cancel',
                     ]),
+
+                Tables\Columns\TextColumn::make('receipt.receipt_number')
+                    ->label('Kuitansi')
+                    ->placeholder('-')
+                    ->badge()
+                    ->color('success')
+                    ->formatStateUsing(fn ($state) => $state ? 'Sudah Ada' : null)
+                    ->default('-')
+                    ->sortable(),
             ])
 
             /* FILTER */
@@ -851,9 +861,20 @@ class InvoiceResource extends Resource
                         $record->update(['status' => 'paid'])
                     )
                     ->requiresConfirmation(),
+
+                Tables\Actions\Action::make('createReceipt')
+                    ->label('Buat Kuitansi')
+                    ->icon('heroicon-o-document-check')
+                    ->color('primary')
+                    ->visible(fn(Invoice $record) => $record->status === 'paid' && !$record->receipt)
+                    ->url(fn(Invoice $record) => \App\Filament\Resources\ReceiptResource::getUrl('create') . '?invoice_id=' . $record->id)
+                    ->openUrlInNewTab(false),
             ])
 
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->modifyQueryUsing(function (Builder $query) {
+                return $query->with('receipt');
+            });
     }
 
     /* ===============================

@@ -69,6 +69,11 @@ class Invoice extends Model
         return $this->hasMany(InvoiceItem::class);
     }
 
+    public function receipt()
+    {
+        return $this->hasOne(Receipt::class);
+    }
+
     public function recalculateTotal(): void
     {
         $subTotal = $this->items()->sum('final_amount');
