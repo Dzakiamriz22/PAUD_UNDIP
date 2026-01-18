@@ -76,12 +76,40 @@ class Invoice extends Model
 
     public function recalculateTotal(): void
     {
-        $subTotal = $this->items()->sum('final_amount');
-        $discountAmount = $this->discount_amount ?? 0;
-        $totalAmount = $subTotal - $discountAmount;
+        // Ambil semua items dengan relasi tariff dan incomeType
+        $items = $this->items()->with('tariff.incomeType')->get();
+        
+        $subTotal = 0;
+        $totalDiscount = 0;
+        
+        foreach ($items as $item) {
+            $amount = (float) $item->final_amount;
+            
+            // Cek apakah incomeType memiliki is_discount = true
+            if ($item->tariff && $item->tariff->incomeType && $item->tariff->incomeType->is_discount) {
+                // Jika discount, kurangi dari total
+                $totalDiscount += $amount;
+            } else {
+                // Jika bukan discount, tambahkan ke subtotal
+                $subTotal += $amount;
+            }
+        }
+        
+        // Discount dari field discount_amount (jika ada)
+        $manualDiscount = $this->discount_amount ?? 0;
+        $totalDiscount += $manualDiscount;
+        
+        // Total = subtotal - total discount
+        $totalAmount = $subTotal - $totalDiscount;
+        
+        // Pastikan total tidak negatif
+        if ($totalAmount < 0) {
+            $totalAmount = 0;
+        }
 
         $this->updateQuietly([
             'sub_total' => $subTotal,
+            'discount_amount' => $totalDiscount,
             'total_amount' => $totalAmount,
         ]);
     }

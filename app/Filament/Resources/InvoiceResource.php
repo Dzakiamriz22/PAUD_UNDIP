@@ -456,7 +456,9 @@ class InvoiceResource extends Resource
                                     ->keyBy('id');
 
                                 $totalPerSiswa = 0;
+                                $totalDiscountPerSiswa = 0;
                                 $breakdownHtml = "";
+                                $discountHtml = "";
 
                                 // Helper function untuk mendapatkan nama bulan
                                 $getMonthName = function($month) {
@@ -549,7 +551,17 @@ class InvoiceResource extends Resource
 
                                     // Hitung total untuk item ini (base amount × jumlah periode)
                                     $itemTotal = $baseAmount * $periodCount;
-                                    $totalPerSiswa += $itemTotal;
+                                    
+                                    // Cek apakah ini discount
+                                    $isDiscount = $tariff->incomeType && $tariff->incomeType->is_discount;
+                                    
+                                    if ($isDiscount) {
+                                        // Jika discount, kurangi dari total
+                                        $totalDiscountPerSiswa += $itemTotal;
+                                    } else {
+                                        // Jika bukan discount, tambahkan ke subtotal
+                                        $totalPerSiswa += $itemTotal;
+                                    }
 
                                     // Format tampilan
                                     $formattedBaseAmount = "Rp " . number_format($baseAmount, 0, ',', '.');
@@ -571,11 +583,16 @@ class InvoiceResource extends Resource
                                         ? "<span class='text-xs text-gray-500 ml-2'>({$formattedBaseAmount} × {$periodCount})</span>"
                                         : "";
                                     
-                                    $breakdownHtml .= "
+                                    $discountBadge = $isDiscount 
+                                        ? "<span class='text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded ml-2'>Diskon</span>"
+                                        : "";
+                                    
+                                    $itemHtml = "
                                         <div class='py-2 border-b border-gray-100 last:border-0'>
                                             <div class='flex justify-between items-start mb-1'>
                                                 <div class='flex-1'>
                                                     <span class='text-sm font-semibold text-gray-900'>{$incomeTypeName}</span>
+                                                    {$discountBadge}
                                                     <div class='flex items-center gap-2 mt-0.5 flex-wrap'>
                                                         <span class='text-xs text-gray-500'>{$billingTypeLabel}{$periodInfo}</span>
                                                         <span class='text-xs text-gray-400'>•</span>
@@ -583,16 +600,44 @@ class InvoiceResource extends Resource
                                                     </div>
                                                 </div>
                                                 <div class='text-right ml-4'>
-                                                    <span class='font-bold text-gray-900 text-sm block'>{$formattedItemTotal}</span>
+                                                    <span class='font-bold " . ($isDiscount ? 'text-red-600' : 'text-gray-900') . " text-sm block'>{$formattedItemTotal}</span>
                                                     {$quantityInfo}
                                                 </div>
                                             </div>
                                         </div>";
+                                    
+                                    if ($isDiscount) {
+                                        $discountHtml .= $itemHtml;
+                                    } else {
+                                        $breakdownHtml .= $itemHtml;
+                                    }
                                 }
 
-                                $grandTotal = $totalPerSiswa * $studentCount;
-                                $formattedTotalPerSiswa = "Rp " . number_format($totalPerSiswa, 0, ',', '.');
+                                // Hitung total setelah discount
+                                $netTotalPerSiswa = $totalPerSiswa - $totalDiscountPerSiswa;
+                                if ($netTotalPerSiswa < 0) {
+                                    $netTotalPerSiswa = 0;
+                                }
+                                
+                                $grandTotal = $netTotalPerSiswa * $studentCount;
+                                $formattedSubTotalPerSiswa = "Rp " . number_format($totalPerSiswa, 0, ',', '.');
+                                $formattedDiscountPerSiswa = "Rp " . number_format($totalDiscountPerSiswa, 0, ',', '.');
+                                $formattedTotalPerSiswa = "Rp " . number_format($netTotalPerSiswa, 0, ',', '.');
                                 $formattedGrandTotal = "Rp " . number_format($grandTotal, 0, ',', '.');
+
+                                $discountSection = $totalDiscountPerSiswa > 0 
+                                    ? "
+                                        <div class='mt-3 pt-3 border-t border-gray-200'>
+                                            <p class='text-xs font-bold text-red-400 uppercase tracking-wider mb-2'>Potongan / Diskon</p>
+                                            <div class='space-y-1'>
+                                                {$discountHtml}
+                                            </div>
+                                            <div class='flex justify-between pt-2 mt-2 border-t border-dashed border-red-200'>
+                                                <span class='font-bold text-red-700 text-sm'>Total Diskon</span>
+                                                <span class='font-bold text-red-600 font-mono text-sm'>{$formattedDiscountPerSiswa}</span>
+                                            </div>
+                                        </div>"
+                                    : "";
 
                                 return new \Illuminate\Support\HtmlString("
                                     <div class='bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-5'>
@@ -602,7 +647,12 @@ class InvoiceResource extends Resource
                                                 {$breakdownHtml}
                                             </div>
                                             <div class='flex justify-between pt-3 mt-3 border-t-2 border-dashed border-gray-300'>
-                                                <span class='font-bold text-gray-800 text-base'>Subtotal per Siswa</span>
+                                                <span class='font-bold text-gray-800 text-base'>Subtotal</span>
+                                                <span class='font-bold text-gray-700 font-mono text-base'>{$formattedSubTotalPerSiswa}</span>
+                                            </div>
+                                            {$discountSection}
+                                            <div class='flex justify-between pt-3 mt-3 border-t-2 border-solid border-primary-300 bg-primary-50 px-3 py-2 rounded'>
+                                                <span class='font-bold text-gray-800 text-base'>Total per Siswa</span>
                                                 <span class='font-bold text-primary-600 font-mono text-lg'>{$formattedTotalPerSiswa}</span>
                                             </div>
                                         </div>
