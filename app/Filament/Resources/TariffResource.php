@@ -98,7 +98,8 @@ class TariffResource extends Resource
 
                 Tables\Columns\TextColumn::make('class_category')
                     ->label('Kategori Kelas')
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => self::CLASS_CATEGORIES[$state] ?? $state),
 
                 Tables\Columns\TextColumn::make('billing_type')
                     ->label('Jenis Pembayaran')
@@ -117,6 +118,16 @@ class TariffResource extends Resource
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Aktif')
                     ->boolean(),
+            ])
+            
+            /* ================= GROUPING ================= */
+            ->groups([
+                Tables\Grouping\Group::make('class_category')
+                    ->label('Kategori Kelas')
+                    ->collapsible()
+                    ->getTitleFromRecordUsing(function (Tariff $record) {
+                        return self::CLASS_CATEGORIES[$record->class_category] ?? $record->class_category;
+                    }),
             ])
 
             /* ================= FILTER ================= */
@@ -159,7 +170,8 @@ class TariffResource extends Resource
                     ->visible(fn (Tariff $record) => is_null($record->approved_at)),
             ])
 
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->defaultGroup('class_category');
     }
 
     /* =====================================================

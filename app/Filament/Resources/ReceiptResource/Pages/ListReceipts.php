@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Filament\Resources\InvoiceResource\Pages;
+namespace App\Filament\Resources\ReceiptResource\Pages;
 
-use App\Filament\Resources\InvoiceResource;
+use App\Filament\Resources\ReceiptResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
-class ListInvoices extends ListRecords
+class ListReceipts extends ListRecords
 {
-    protected static string $resource = InvoiceResource::class;
+    protected static string $resource = ReceiptResource::class;
 
     protected function getHeaderActions(): array
     {
@@ -17,3 +17,4 @@ class ListInvoices extends ListRecords
         ];
     }
 }
+

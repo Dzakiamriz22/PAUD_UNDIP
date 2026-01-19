@@ -4,18 +4,22 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\StudentResource\Pages;
 use App\Filament\Resources\StudentResource\RelationManagers\ClassHistoriesRelationManager;
+use App\Filament\Resources\StudentResource\RelationManagers\PaymentHistoryRelationManager;
 use App\Models\Student;
 use Filament\Forms;
 use Filament\Tables;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
+use Filament\Infolists\Infolist;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\Section as InfolistSection;
 use Illuminate\Database\Eloquent\Builder;
 
 class StudentResource extends Resource
@@ -127,7 +131,7 @@ class StudentResource extends Resource
                     ->label('JK')
                     ->colors([
                         'primary' => 'male',
-                        'pink' => 'female',
+                        'danger' => 'female',
                     ])
                     ->formatStateUsing(fn ($state) =>
                         $state === 'male' ? 'Laki-laki' : 'Perempuan'
@@ -155,6 +159,7 @@ class StudentResource extends Resource
                     ]),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
@@ -162,10 +167,68 @@ class StudentResource extends Resource
             ]);
     }
 
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                InfolistSection::make('Data Siswa')
+                    ->schema([
+                        TextEntry::make('nis')
+                            ->label('NIS'),
+
+                        TextEntry::make('name')
+                            ->label('Nama Siswa'),
+
+                        TextEntry::make('gender')
+                            ->label('Jenis Kelamin')
+                            ->formatStateUsing(fn ($state) =>
+                                $state === 'male' ? 'Laki-laki' : 'Perempuan'
+                            )
+                            ->badge()
+                            ->color(fn ($state) => $state === 'male' ? 'primary' : 'pink'),
+
+                        TextEntry::make('birth_date')
+                            ->label('Tanggal Lahir')
+                            ->date('d/m/Y'),
+
+                        TextEntry::make('parent_name')
+                            ->label('Nama Orang Tua'),
+
+                        TextEntry::make('parent_contact')
+                            ->label('Kontak Orang Tua')
+                            ->default('-'),
+
+                        TextEntry::make('status')
+                            ->label('Status')
+                            ->formatStateUsing(fn ($state) => match ($state) {
+                                'active' => 'Aktif',
+                                'inactive' => 'Nonaktif',
+                                'graduated' => 'Lulus',
+                                default => $state,
+                            })
+                            ->badge()
+                            ->color(fn ($state) => match ($state) {
+                                'active' => 'success',
+                                'inactive' => 'warning',
+                                'graduated' => 'gray',
+                                default => 'gray',
+                            }),
+
+                        TextEntry::make('activeClass.classRoom.code')
+                            ->label('Kelas Aktif')
+                            ->badge()
+                            ->color('success')
+                            ->default('-'),
+                    ])
+                    ->columns(2),
+            ]);
+    }
+
     public static function getRelations(): array
     {
         return [
             ClassHistoriesRelationManager::class,
+            PaymentHistoryRelationManager::class,
         ];
     }
 
@@ -174,6 +237,7 @@ class StudentResource extends Resource
         return [
             'index' => Pages\ListStudents::route('/'),
             'create' => Pages\CreateStudent::route('/create'),
+            'view' => Pages\ViewStudent::route('/{record}'),
             'edit' => Pages\EditStudent::route('/{record}/edit'),
         ];
     }

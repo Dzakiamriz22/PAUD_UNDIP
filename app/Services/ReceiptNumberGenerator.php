@@ -4,22 +4,24 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 
-class InvoiceNumberGenerator
+class ReceiptNumberGenerator
 {
     public static function generate(): string
     {
         return DB::transaction(function () {
-
             $year = now()->year;
+            $month = now()->month;
 
-            $sequence = DB::table('invoice_sequences')
+            $sequence = DB::table('receipt_sequences')
                 ->where('year', $year)
+                ->where('month', $month)
                 ->lockForUpdate()
                 ->first();
 
             if (! $sequence) {
-                DB::table('invoice_sequences')->insert([
+                DB::table('receipt_sequences')->insert([
                     'year'        => $year,
+                    'month'       => $month,
                     'last_number' => 1,
                     'created_at'  => now(),
                     'updated_at'  => now(),
@@ -29,8 +31,9 @@ class InvoiceNumberGenerator
             } else {
                 $number = $sequence->last_number + 1;
 
-                DB::table('invoice_sequences')
+                DB::table('receipt_sequences')
                     ->where('year', $year)
+                    ->where('month', $month)
                     ->update([
                         'last_number' => $number,
                         'updated_at'  => now(),
@@ -38,7 +41,7 @@ class InvoiceNumberGenerator
             }
 
             return str_pad($number, 6, '0', STR_PAD_LEFT)
-                . '/BPU/A1.02/INV/' . self::romanMonth() . '/' . $year;
+                . '/BPU/A1.02/RCP/' . self::romanMonth() . '/' . $year;
         });
     }
 
@@ -50,3 +53,4 @@ class InvoiceNumberGenerator
         ][now()->month];
     }
 }
+
