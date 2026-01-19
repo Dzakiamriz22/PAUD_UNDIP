@@ -33,8 +33,8 @@ return new class extends Migration {
             $table->string('reference_number')->nullable();
 
             // Tanggal pembayaran (Source of Truth untuk laporan arus kas)
-            $table->timestamp('payment_date');
-            $table->timestamp('issued_at');
+            $table->timestamp('payment_date')->nullable();
+            $table->timestamp('issued_at')->nullable();
 
             // Staff/Admin yang membuat kuitansi (Akuntabilitas)
             $table->foreignUuid('created_by')
