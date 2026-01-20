@@ -72,6 +72,16 @@ Route::get('/invoices/{invoice}/download', function (\App\Models\Invoice $invoic
         ->download('invoice-' . str_replace('/', '-', $invoice->invoice_number) . '.pdf');
 })->name('invoices.download')->middleware('auth');
 
+// Temporary invoice/zip download (files stored under storage/app/invoice_tmp)
+Route::get('/invoices/download-temp/{filename}', function ($filename) {
+    $path = storage_path('app/invoice_tmp/' . $filename);
+    if (!file_exists($path)) {
+        abort(404);
+    }
+
+    return response()->download($path)->deleteFileAfterSend(true);
+})->name('invoices.download_temp')->middleware('auth');
+
 Route::middleware('auth')->group(function () {
     Route::get('/receipts/{receipt}/preview', [ReceiptPdfController::class, 'preview'])
         ->name('receipts.preview');
