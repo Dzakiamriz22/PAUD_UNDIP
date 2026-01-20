@@ -60,7 +60,7 @@ class ReceiptResource extends Resource
                             ->preload()
                             ->required()
                             ->live()
-                            ->disabled(fn ($record) => $record !== null) // Disable saat edit
+                            ->disabled(fn ($record) => $record !== null || request()->query('invoice_id') !== null) // Disable saat edit atau jika invoice_id di-query string
                             ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                 if ($state) {
                                     $invoice = Invoice::find($state);
@@ -78,10 +78,18 @@ class ReceiptResource extends Resource
 
                                         // Set default amount_paid sama dengan total_amount invoice
                                         $set('amount_paid', $invoice->total_amount);
+                                        // Jika invoice punya VA, set metode pembayaran dan nomor referensi otomatis
+                                        if (!empty($invoice->va_number)) {
+                                            $set('payment_method', 'va');
+                                            $set('reference_number', $invoice->va_number);
+                                        }
+
+                                        // Set issued_at ke waktu sekarang
+                                        $set('issued_at', now());
                                     }
                                 }
                             })
-                            ->helperText(fn ($record) => $record ? 'Invoice tidak dapat diubah setelah kuitansi dibuat' : 'Pilih invoice yang akan dibuatkan kuitansi (hanya invoice yang belum punya kuitansi)'),
+                            ->helperText(fn ($record) => $record ? 'Invoice tidak dapat diubah setelah kuitansi dibuat' : 'Invoice yang akan dibuat'),
 
                         Forms\Components\Placeholder::make('invoice_info')
                             ->label('')
