@@ -16,6 +16,9 @@ use App\Models\VirtualAccount;
 use App\Models\AcademicYear;
 
 use Illuminate\Support\Facades\DB;
+use App\Services\BatchInvoiceService;
+use ZipArchive;
+use Illuminate\Http\Response;
 
 class CreateInvoice extends CreateRecord
 {
@@ -25,7 +28,9 @@ class CreateInvoice extends CreateRecord
     {
         $data = $this->form->getState();
 
-        DB::transaction(function () use ($data) {
+        $createdInvoiceIds = [];
+
+        DB::transaction(function () use ($data, &$createdInvoiceIds) {
 
             $class    = SchoolClass::findOrFail($data['class_id']);
             $students = Student::whereIn('id', $data['student_ids'])->get();
@@ -205,14 +210,66 @@ class CreateInvoice extends CreateRecord
                 }
 
                 $invoice->recalculateTotal();
+                $createdInvoiceIds[] = $invoice->id;
             }
         });
 
-        Notification::make()
-            ->title('Invoice berhasil digenerate')
-            ->success()
-            ->send();
+        // Jika tidak ada invoice dibuat, beri notifikasi dan redirect
+        if (empty($createdInvoiceIds)) {
+            Notification::make()
+                ->title('Tidak ada invoice dibuat')
+                ->danger()
+                ->send();
 
-        $this->redirect($this->getResource()::getUrl('index'));
+            $this->redirect($this->getResource()::getUrl('index'));
+            return;
+        }
+
+        // Ambil invoices yang baru dibuat
+        $invoices = Invoice::whereIn('id', $createdInvoiceIds)->get();
+
+        // Jika hanya 1 invoice dibuat, langsung unduh PDF tunggal
+        $batchService = new BatchInvoiceService();
+
+        $tmpDir = storage_path('app/invoice_tmp');
+        if (!is_dir($tmpDir)) {
+            @mkdir($tmpDir, 0755, true);
+        }
+
+        if ($invoices->count() === 1) {
+            $inv = $invoices->first();
+            $pdf = $batchService->generateSinglePdf($inv);
+            $safeInvoiceNumber = str_replace('/', '-', $inv->invoice_number);
+            $studentName = preg_replace('/[^A-Za-z0-9\-_. ]/', '', $inv->student->name ?? 'student');
+            $fileName = 'invoice-' . $safeInvoiceNumber . '-' . $studentName . '.pdf';
+            $filePath = $tmpDir . DIRECTORY_SEPARATOR . $fileName;
+            file_put_contents($filePath, $pdf->output());
+
+            // redirect to temporary download route
+            $this->redirect(route('invoices.download_temp', ['filename' => $fileName]));
+            return;
+        }
+
+        // Lebih dari satu: buat SATU PDF gabungan (batch)
+        $pdf = $batchService->generateBatchPdf($invoices);
+
+        $downloadName = 'invoices-' . now()->format('Ymd-His') . '.pdf';
+        $filePath = $tmpDir . DIRECTORY_SEPARATOR . $downloadName;
+
+        try {
+            file_put_contents($filePath, $pdf->output());
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Gagal membuat file PDF gabungan')
+                ->danger()
+                ->send();
+
+            $this->redirect($this->getResource()::getUrl('index'));
+            return;
+        }
+
+        // redirect to temporary download route for the merged PDF
+        $this->redirect(route('invoices.download_temp', ['filename' => basename($filePath)]));
+        return;
     }
 }

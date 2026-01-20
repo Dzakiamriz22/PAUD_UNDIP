@@ -14,12 +14,11 @@ class ViewInvoice extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('previewPdf')
-                ->label('Preview PDF')
-                ->icon('heroicon-o-eye')
-                ->url(route('invoices.preview', $this->record))
-                ->openUrlInNewTab()
-                ->color('primary'),
+            Actions\Action::make('downloadPdf')
+                ->label('Download PDF')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('success')
+                ->action(fn () => $this->downloadPdf()),
         ];
     }
 
@@ -28,7 +27,6 @@ class ViewInvoice extends ViewRecord
         $invoice = $this->record->load([
             'student.activeClass.classRoom',
             'academicYear',
-            'incomeType',
             'items',
         ]);
 
@@ -37,7 +35,7 @@ class ViewInvoice extends ViewRecord
             compact('invoice')
         );
 
-        // AMAN: hilangkan slash agar tidak dianggap folder
+        // Hilangkan slash agar aman untuk nama file
         $safeInvoiceNumber = str_replace('/', '-', $invoice->invoice_number);
 
         return response()->streamDownload(
