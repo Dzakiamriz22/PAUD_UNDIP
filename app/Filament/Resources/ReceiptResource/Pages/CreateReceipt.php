@@ -21,10 +21,20 @@ class CreateReceipt extends CreateRecord
         if ($invoiceId) {
             $invoice = Invoice::find($invoiceId);
             if ($invoice && !$invoice->receipt) {
-                $this->form->fill([
+                $fill = [
                     'invoice_id' => $invoiceId,
                     'amount_paid' => $invoice->total_amount,
-                ]);
+                ];
+
+                // Jika invoice memiliki VA, isi metode pembayaran dan nomor referensi
+                if (!empty($invoice->va_number)) {
+                    $fill['payment_method'] = 'va';
+                    $fill['reference_number'] = $invoice->va_number;
+                }
+
+                $fill['issued_at'] = now();
+
+                $this->form->fill($fill);
             }
         }
     }
@@ -55,12 +65,41 @@ class CreateReceipt extends CreateRecord
             }
         }
 
+        // Validasi: payment_date tidak boleh lebih besar dari issued_at
+        if (!empty($data['payment_date']) && !empty($data['issued_at'])) {
+            try {
+                $payment = \Carbon\Carbon::parse($data['payment_date']);
+                $issued = \Carbon\Carbon::parse($data['issued_at']);
+                if ($payment->gt($issued)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'payment_date' => 'Tanggal pembayaran tidak boleh lebih dari tanggal kuitansi diterbitkan.',
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // Jika parsing gagal, biarkan validasi default handle atau lempar pesan validasi
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'payment_date' => 'Tanggal pembayaran tidak valid.',
+                ]);
+            }
+        }
+
         return $data;
     }
 
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
+    }
+
+    /**
+     * Remove the "Create & create another" action — only keep Create and Cancel.
+     */
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getCreateFormAction(),
+            $this->getCancelFormAction(),
+        ];
     }
 
     protected function getCreatedNotification(): ?Notification

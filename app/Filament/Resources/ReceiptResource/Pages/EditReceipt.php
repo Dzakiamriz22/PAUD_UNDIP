@@ -41,6 +41,23 @@ class EditReceipt extends EditRecord
             }
         }
 
+        // Validasi: payment_date tidak boleh lebih besar dari issued_at
+        if (!empty($data['payment_date']) && !empty($data['issued_at'])) {
+            try {
+                $payment = \Carbon\Carbon::parse($data['payment_date']);
+                $issued = \Carbon\Carbon::parse($data['issued_at']);
+                if ($payment->gt($issued)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'payment_date' => 'Tanggal pembayaran tidak boleh lebih dari tanggal kuitansi diterbitkan.',
+                    ]);
+                }
+            } catch (\Exception $e) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'payment_date' => 'Tanggal pembayaran tidak valid.',
+                ]);
+            }
+        }
+
         return $data;
     }
 
