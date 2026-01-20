@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\PenomoranSuratController;
+use App\Http\Controllers\ReceiptPdfController;
 use App\Livewire\SuperDuper\BlogList;
 use App\Livewire\SuperDuper\BlogDetails;
 use App\Livewire\SuperDuper\Pages\ContactUs;
@@ -70,3 +71,11 @@ Route::get('/invoices/{invoice}/download', function (\App\Models\Invoice $invoic
         ->generateSinglePdf($invoice)
         ->download('invoice-' . str_replace('/', '-', $invoice->invoice_number) . '.pdf');
 })->name('invoices.download')->middleware('auth');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/receipts/{receipt}/preview', [ReceiptPdfController::class, 'preview'])
+        ->name('receipts.preview');
+
+    Route::get('/receipts/{receipt}/download', [ReceiptPdfController::class, 'download'])
+        ->name('receipts.download');
+});
