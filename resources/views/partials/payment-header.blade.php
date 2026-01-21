@@ -10,7 +10,6 @@
             </td>
             <td class="payment-title">
                 <h2>{{ $title ?? 'BUKTI PEMBAYARAN' }}</h2>
-                <div class="{{ $statusClass ?? 'status-unpaid' }}">{{ $statusText ?? '' }}</div>
             </td>
         </tr>
     </table>
