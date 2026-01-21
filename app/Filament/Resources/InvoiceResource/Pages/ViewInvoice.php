@@ -6,6 +6,8 @@ use App\Filament\Resources\InvoiceResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Infolists\Infolist;
+use Filament\Infolists\Components;
 
 class ViewInvoice extends ViewRecord
 {
@@ -30,10 +32,9 @@ class ViewInvoice extends ViewRecord
             'items',
         ]);
 
-        $pdf = Pdf::loadView(
-            'pdf.invoice-single',
-            compact('invoice')
-        );
+        // Use the invoice-doc view for consistent page/pdf appearance
+        $pdf = Pdf::loadView('pdf.invoice-single', compact('invoice'))
+            ->setPaper('A4', 'landscape');
 
         // Hilangkan slash agar aman untuk nama file
         $safeInvoiceNumber = str_replace('/', '-', $invoice->invoice_number);
@@ -42,5 +43,19 @@ class ViewInvoice extends ViewRecord
             fn () => print($pdf->output()),
             'invoice-' . $safeInvoiceNumber . '.pdf'
         );
+    }
+
+    public function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist->schema([
+            Components\Livewire::make(
+                \App\Livewire\InvoicePreview::class,
+                [
+                    'invoice' => $infolist->getRecord(),
+                ]
+            )
+                ->key(fn ($record) => 'invoice-preview-' . $record->id)
+                ->columnSpanFull(),
+        ]);
     }
 }

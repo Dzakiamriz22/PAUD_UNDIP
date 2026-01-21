@@ -28,7 +28,7 @@ class ReceiptPdfController extends Controller
         $receipt = $this->loadReceipt($receipt);
 
         return Pdf::loadView('receipts.pdf', compact('receipt'))
-            ->setPaper('A4')
+            ->setPaper('A4', 'landscape')
             ->download(
                 'kuitansi-' . str_replace('/', '-', $receipt->receipt_number) . '.pdf'
             );

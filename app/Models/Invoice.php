@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Support\Str;
 use App\Services\InvoiceNumberGenerator;
 
 class Invoice extends Model
@@ -29,22 +28,18 @@ class Invoice extends Model
     ];
 
     protected $casts = [
-        'issued_at' => 'date',
+        'issued_at' => 'datetime',
         'due_date' => 'date',
+        'paid_at' => 'datetime',
         'total_amount' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'sub_total' => 'decimal:2',
-        'paid_at' => 'datetime',
     ];
 
     protected static function booted()
     {
         static::creating(function ($invoice) {
-
-            if (! $invoice->invoice_number) {
-                $invoice->invoice_number = InvoiceNumberGenerator::generate();
-            }
-
+            $invoice->invoice_number ??= InvoiceNumberGenerator::generate();
             $invoice->status = 'unpaid';
             $invoice->issued_at ??= now();
             $invoice->created_by ??= auth()->id();
@@ -52,7 +47,7 @@ class Invoice extends Model
         });
     }
 
-    /* RELATIONS */
+    /* ================= RELATIONS ================= */
 
     public function student()
     {
@@ -74,38 +69,33 @@ class Invoice extends Model
         return $this->hasOne(Receipt::class);
     }
 
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /* ================= LOGIC ================= */
+
     public function recalculateTotal(): void
     {
-        // Ambil semua items dengan relasi tariff dan incomeType
         $items = $this->items()->with('tariff.incomeType')->get();
-        
+
         $subTotal = 0;
         $totalDiscount = 0;
-        
+
         foreach ($items as $item) {
             $amount = (float) $item->final_amount;
-            
-            // Cek apakah incomeType memiliki is_discount = true
-            if ($item->tariff && $item->tariff->incomeType && $item->tariff->incomeType->is_discount) {
-                // Jika discount, kurangi dari total
+
+            if ($item->tariff?->incomeType?->is_discount) {
                 $totalDiscount += $amount;
             } else {
-                // Jika bukan discount, tambahkan ke subtotal
                 $subTotal += $amount;
             }
         }
-        
-        // Discount dari field discount_amount (jika ada)
-        $manualDiscount = $this->discount_amount ?? 0;
-        $totalDiscount += $manualDiscount;
-        
-        // Total = subtotal - total discount
-        $totalAmount = $subTotal - $totalDiscount;
-        
-        // Pastikan total tidak negatif
-        if ($totalAmount < 0) {
-            $totalAmount = 0;
-        }
+
+        $totalDiscount += $this->discount_amount ?? 0;
+
+        $totalAmount = max(0, $subTotal - $totalDiscount);
 
         $this->updateQuietly([
             'sub_total' => $subTotal,

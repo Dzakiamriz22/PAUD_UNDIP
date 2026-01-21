@@ -1,13 +1,6 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <title>Bukti Pembayaran (Batch)</title>
-    @include('partials.payment-styles')
-</head>
-<body class="payment-doc">
+@include('partials.payment-styles')
 
-@foreach ($invoices as $invoice)
+<div class="payment-doc">
 
     @php
         $isPaid = !empty($invoice->paid_at) || $invoice->status === 'paid';
@@ -15,9 +8,8 @@
         $statusClass = $isPaid ? 'status-paid' : 'status-unpaid';
     @endphp
 
-    <div class="page">
     @include('partials.payment-header', [
-        'title' => 'BUKTI PEMBAYARAN',
+        'title' => 'INVOICE',
         'statusText' => $statusText,
         'statusClass' => $statusClass,
     ])
@@ -104,18 +96,8 @@
 
     @include('partials.payment-footer', [
         'signatureDate' => now()->format('d F Y'),
-        'signatureName' => auth()->user()->name ?? 'Admin',
+        'signatureName' => $invoice->creator->username ?? 'Bendahara',
         'signatureRole' => 'Petugas / Bendahara',
     ])
 
-    </div>
-
-    {{-- PAGE BREAK kecuali invoice terakhir --}}
-    @if (! $loop->last)
-        <div class="page-break"></div>
-    @endif
-
-@endforeach
-
-</body>
-</html>
+</div>

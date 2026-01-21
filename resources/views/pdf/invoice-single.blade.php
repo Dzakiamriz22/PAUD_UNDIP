@@ -1,113 +1,109 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <meta charset="utf-8">
-    <title>Bukti Pembayaran - {{ $invoice->invoice_number }}</title>
-    <style>
-        body { font-family: DejaVu Sans, monospace; font-size: 12px; color: #000; }
-        .wrap { width: 700px; margin: 0 auto; }
-        .header { text-align: center; }
-        .header .title { font-weight: bold; letter-spacing: 1px; }
-        .logo { position: absolute; left: 40px; top: 20px; }
-        .meta { width: 100%; margin-top: 6px; }
-        .meta td { vertical-align: top; padding: 2px 6px; }
-        .sep { border-top: 1px dashed #000; margin: 8px 0; }
-        .items { width: 100%; font-family: monospace; }
-        .items td { padding: 2px 6px; }
-        .items .desc { padding-left: 6px; }
-        .right { text-align: right; }
-        .totals { width: 100%; margin-top: 8px; }
-        .totals td { padding: 2px 6px; }
-        .center { text-align: center; }
-    </style>
+    <meta charset="UTF-8">
+    <title>Invoice - {{ $invoice->invoice_number }}</title>
+    @include('partials.payment-styles')
 </head>
-<body>
+<body class="payment-doc">
 
-<div class="wrap">
-    @if(file_exists(public_path('images/logo.png')))
-        <div class="logo">
-            <img src="{{ public_path('images/logo.png') }}" alt="logo" style="width:60px; height:auto;" />
-        </div>
-    @endif
+@php
+    $isPaid = !empty($invoice->paid_at) || $invoice->status === 'paid';
+    $statusText = $isPaid ? 'LUNAS' : 'BELUM LUNAS';
+    $statusClass = $isPaid ? 'status-paid' : 'status-unpaid';
+@endphp
 
-    <div class="header">
-        <div class="small">&nbsp;</div>
-        <div class="title">{{ strtoupper(config('app.name')) }}</div>
-        <div class="small">Alamat Sekolah</div>
-    </div>
+@include('partials.payment-header', [
+    'title' => 'BUKTI PEMBAYARAN',
+    'statusText' => $statusText,
+    'statusClass' => $statusClass,
+])
 
-    <div class="sep"></div>
+<table class="info-table">
+    <tr>
+        <td width="20%">No Transaksi</td>
+        <td width="30%">: {{ $invoice->invoice_number }}</td>
+        <td width="20%">Tanggal</td>
+        <td width="30%">: {{ $invoice->issued_at?->format('d/m/Y') }}</td>
+    </tr>
+    <tr>
+        <td>No Induk</td>
+        <td>: {{ optional($invoice->student)->nis ?? '-' }}</td>
+        <td>Waktu</td>
+        <td>: {{ $invoice->issued_at?->format('H:i') }}</td>
+    </tr>
+    <tr>
+        <td>Nama Siswa</td>
+        <td>: {{ optional($invoice->student)->name ?? '-' }}</td>
+        <td>Kelas</td>
+        <td>: {{ optional(optional($invoice->student)->activeClass)->classRoom->category ?? '-' }}</td>
+    </tr>
+    <tr>
+        <td>Tahun Ajaran</td>
+        <td colspan="3">: {{ optional($invoice->academicYear)->year ?? '-' }}</td>
+    </tr>
+    <tr>
+        <td>Jatuh Tempo</td>
+        <td colspan="3">: {{ $invoice->due_date?->format('d/m/Y') ?? '-' }}</td>
+    </tr>
+</table>
 
-    <table class="meta">
+<table class="payment">
+    <thead>
         <tr>
-            <td style="width:60%;">
-                No Transaksi : {{ $invoice->invoice_number }}<br>
-                No Induk      : {{ optional($invoice->student)->nis ?? '-' }}<br>
-                Nama          : {{ optional($invoice->student)->name ?? '-' }}
-            </td>
-            <td style="width:40%; text-align:right;">
-                Tanggal : {{ $invoice->issued_at?->format('d-m-Y H:i:s') }}<br>
-                Kelas   : {{ optional(optional($invoice->student)->activeClass)->classRoom->name ?? '-' }}
-            </td>
+            <th>No</th>
+            <th>Rincian Pembayaran</th>
+            <th width="30%" class="amount">Nominal</th>
         </tr>
-    </table>
-
-    <div class="sep"></div>
-
-    <table class="items">
-        <thead>
-            <tr>
-                <td style="width:40px;">No</td>
-                <td style="width:520px;">Nama Pembayaran</td>
-                <td style="width:120px;" class="right">Nominal</td>
+    </thead>
+    <tbody>
+        @php
+            $subtotal = 0;
+            $totalDiscount = 0;
+        @endphp
+        @foreach($invoice->items as $item)
+            @php
+                $isDiscount = $item->tariff?->incomeType?->is_discount ?? false;
+                $amount = $item->amount ?? $item->final_amount ?? 0;
+                if ($isDiscount) {
+                    $totalDiscount += abs($amount);
+                } else {
+                    $subtotal += $amount;
+                }
+            @endphp
+            <tr class="{{ $isDiscount ? 'discount' : '' }}">
+                <td width="40">{{ $loop->iteration }}</td>
+                <td>
+                    {{ strtoupper($item->description ?? $item->name ?? '-') }}
+                </td>
+                <td class="amount">{{ $isDiscount ? '− ' : '' }}Rp {{ number_format(abs($amount), 0, ',', '.') }}</td>
             </tr>
-        </thead>
-        <tbody>
-            @foreach($invoice->items as $item)
-            <tr>
-                <td>{{ $loop->iteration }}</td>
-                <td class="desc">{{ strtoupper($item->description ?? $item->name ?? '-') }}</td>
-                <td class="right">{{ number_format($item->amount ?? $item->final_amount ?? 0,0,',','.') }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+        @endforeach
 
-    <div class="sep"></div>
-
-    <table class="totals">
-        <tr>
-            <td style="width:70%;"></td>
-            <td style="width:30%;">
-                <table style="width:100%; font-family: monospace;">
-                    <tr>
-                        <td style="width:60%;">Total :</td>
-                        <td class="right">{{ number_format($invoice->total_amount ?? $invoice->items->sum(fn($i)=> $i->amount ?? $i->final_amount ?? 0),0,',','.') }}</td>
-                    </tr>
-                    <tr>
-                        <td>Tunai :</td>
-                        <td class="right">{{ number_format($invoice->total_amount ?? 0,0,',','.') }}</td>
-                    </tr>
-                    <tr>
-                        <td>Kembali :</td>
-                        <td class="right">0</td>
-                    </tr>
-                </table>
-            </td>
+        <tr class="small">
+            <td colspan="2">Subtotal</td>
+            <td class="amount">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
         </tr>
-    </table>
 
-    <div class="sep"></div>
+        @if($totalDiscount > 0)
+            <tr class="small">
+                <td colspan="2">Total Diskon</td>
+                <td class="amount">− Rp {{ number_format($totalDiscount, 0, ',', '.') }}</td>
+            </tr>
+        @endif
 
-    <div style="margin-top:8px;">
-        <div class="center">Indonesia, {{ $invoice->issued_at?->format('d-m-Y') }}</div>
-        <div style="height:40px;"></div>
-        <div class="center">Petugas</div>
-        <div style="height:30px;"></div>
-        <div class="center">{{ auth()->user()->name ?? 'Admin' }}</div>
-    </div>
+        <tr class="total-row">
+            <th colspan="2">Total Tagihan</th>
+            <th class="amount">Rp {{ number_format(max(0, $subtotal - $totalDiscount), 0, ',', '.') }}</th>
+        </tr>
+    </tbody>
+</table>
 
-</div>
+@include('partials.payment-footer', [
+    'signatureDate' => now()->format('d F Y'),
+    'signatureName' => auth()->user()->name ?? 'Admin',
+    'signatureRole' => 'Petugas / Bendahara',
+])
 
 </body>
 </html>

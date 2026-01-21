@@ -236,7 +236,7 @@ class CreateInvoice extends CreateRecord
             @mkdir($tmpDir, 0755, true);
         }
 
-        if ($invoices->count() === 1) {
+            if ($invoices->count() === 1) {
             $inv = $invoices->first();
             $pdf = $batchService->generateSinglePdf($inv);
             $safeInvoiceNumber = str_replace('/', '-', $inv->invoice_number);
@@ -244,10 +244,14 @@ class CreateInvoice extends CreateRecord
             $fileName = 'invoice-' . $safeInvoiceNumber . '-' . $studentName . '.pdf';
             $filePath = $tmpDir . DIRECTORY_SEPARATOR . $fileName;
             file_put_contents($filePath, $pdf->output());
+                // Tampilkan notifikasi sukses lalu arahkan ke route download sementara
+                Notification::make()
+                    ->title('Invoice berhasil dibuat dan PDF disimpan')
+                    ->success()
+                    ->send();
 
-            // redirect to temporary download route
-            $this->redirect(route('invoices.download_temp', ['filename' => $fileName]));
-            return;
+                $this->redirect(route('invoices.download_temp', ['filename' => $fileName]));
+                return;
         }
 
         // Lebih dari satu: buat SATU PDF gabungan (batch)
@@ -256,20 +260,25 @@ class CreateInvoice extends CreateRecord
         $downloadName = 'invoices-' . now()->format('Ymd-His') . '.pdf';
         $filePath = $tmpDir . DIRECTORY_SEPARATOR . $downloadName;
 
-        try {
-            file_put_contents($filePath, $pdf->output());
-        } catch (\Exception $e) {
+            try {
+                file_put_contents($filePath, $pdf->output());
+            } catch (\Exception $e) {
+                Notification::make()
+                    ->title('Gagal membuat file PDF gabungan')
+                    ->danger()
+                    ->send();
+
+                $this->redirect($this->getResource()::getUrl('index'));
+                return;
+            }
+
+            // Tampilkan notifikasi sukses lalu arahkan ke route download sementara untuk file gabungan
             Notification::make()
-                ->title('Gagal membuat file PDF gabungan')
-                ->danger()
+                ->title('Invoice berhasil dibuat dan PDF gabungan disimpan')
+                ->success()
                 ->send();
 
-            $this->redirect($this->getResource()::getUrl('index'));
+            $this->redirect(route('invoices.download_temp', ['filename' => basename($filePath)]));
             return;
-        }
-
-        // redirect to temporary download route for the merged PDF
-        $this->redirect(route('invoices.download_temp', ['filename' => basename($filePath)]));
-        return;
     }
 }
