@@ -22,6 +22,9 @@ use Filament\Forms\Components\Grid;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Notifications\Notification;
+use App\Services\BatchInvoiceService;
+use Illuminate\Support\Collection;
 
 class InvoiceResource extends Resource
 {
@@ -919,6 +922,70 @@ class InvoiceResource extends Resource
                     ->visible(fn(Invoice $record) => $record->status === 'paid' && !$record->receipt)
                     ->url(fn(Invoice $record) => \App\Filament\Resources\ReceiptResource::getUrl('create') . '?invoice_id=' . $record->id)
                     ->openUrlInNewTab(false),
+            ])
+
+            ->bulkActions([
+                Tables\Actions\BulkAction::make('generatePdf')
+                    ->label('Generate PDF')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->requiresConfirmation()
+                    ->action(function (Collection $records) {
+                        $batchService = new BatchInvoiceService();
+
+                        $tmpDir = storage_path('app/invoice_tmp');
+                        if (!is_dir($tmpDir)) {
+                            @mkdir($tmpDir, 0755, true);
+                        }
+
+                        if ($records->count() === 1) {
+                            $inv = $records->first();
+                            $pdf = $batchService->generateSinglePdf($inv);
+                            $safeInvoiceNumber = str_replace('/', '-', $inv->invoice_number);
+                            $studentName = preg_replace('/[^A-Za-z0-9\-_. ]/', '', $inv->student->name ?? 'student');
+                            $fileName = 'invoice-' . $safeInvoiceNumber . '-' . $studentName . '.pdf';
+                            $filePath = $tmpDir . DIRECTORY_SEPARATOR . $fileName;
+
+                            try {
+                                file_put_contents($filePath, $pdf->output());
+                            } catch (\Exception $e) {
+                                Notification::make()
+                                    ->title('Gagal membuat PDF')
+                                    ->danger()
+                                    ->send();
+                                return null;
+                            }
+
+                            Notification::make()
+                                ->title('PDF berhasil dibuat')
+                                ->success()
+                                ->send();
+
+                            return redirect(route('invoices.download_temp', ['filename' => $fileName]));
+                        }
+
+                        // Banyak invoice: gabungkan
+                        $invoices = $records;
+                        $pdf = $batchService->generateBatchPdf($invoices);
+                        $downloadName = 'invoices-' . now()->format('Ymd-His') . '.pdf';
+                        $filePath = $tmpDir . DIRECTORY_SEPARATOR . $downloadName;
+
+                        try {
+                            file_put_contents($filePath, $pdf->output());
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Gagal membuat PDF gabungan')
+                                ->danger()
+                                ->send();
+                            return null;
+                        }
+
+                        Notification::make()
+                            ->title('PDF gabungan berhasil dibuat')
+                            ->success()
+                            ->send();
+
+                        return redirect(route('invoices.download_temp', ['filename' => basename($filePath)]));
+                    }),
             ])
 
             ->defaultSort('created_at', 'desc')

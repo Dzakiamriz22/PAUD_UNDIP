@@ -3,113 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <title>Kuitansi Pembayaran</title>
-    <style>
-        body {
-            font-family: DejaVu Sans, sans-serif;
-            font-size: 12px;
-            color: #111827;
-        }
-
-        /* ===== HEADER ===== */
-        .header {
-            border-bottom: 2px solid #111827;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-        .school-name {
-            font-size: 14px;
-            font-weight: bold;
-        }
-        .doc-title {
-            text-align: right;
-        }
-        .doc-title h2 {
-            margin: 0;
-        }
-        .status {
-            font-size: 11px;
-            font-weight: bold;
-            color: #16a34a;
-        }
-
-        /* ===== INFO TABLE ===== */
-        .info-table {
-            width: 100%;
-            margin-bottom: 20px;
-        }
-        .info-table td {
-            padding: 4px 0;
-        }
-
-        /* ===== PAYMENT TABLE ===== */
-        table.payment {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        table.payment th,
-        table.payment td {
-            border: 1px solid #d1d5db;
-            padding: 8px;
-        }
-        table.payment th {
-            background: #f3f4f6;
-            text-align: left;
-        }
-        table.payment td.amount {
-            text-align: right;
-        }
-
-        /* ===== DISCOUNT ===== */
-        .discount {
-            color: #6b7280;
-            font-style: italic;
-        }
-
-        /* ===== TOTAL ===== */
-        .total-row th,
-        .total-row td {
-            font-weight: bold;
-            background: #f9fafb;
-        }
-
-        /* ===== FOOTER ===== */
-        .footer {
-            margin-top: 40px;
-            width: 100%;
-        }
-        .signature {
-            width: 40%;
-            float: right;
-            text-align: center;
-        }
-        .signature .name {
-            margin-top: 60px;
-            font-weight: bold;
-        }
-        .clear {
-            clear: both;
-        }
-    </style>
+    @include('partials.payment-styles')
 </head>
-<body>
+<body class="payment-doc">
 
-{{-- ================= HEADER ================= --}}
-<div class="header">
-    <table width="100%">
-        <tr>
-            <td>
-                <div class="school-name">PAUD PERMATA UNDIP</div>
-                <div>Jl. Pendidikan No. 1</div>
-            </td>
-            <td class="doc-title">
-                <h2>KUITANSI</h2>
-                <div class="status">LUNAS</div>
-            </td>
-        </tr>
-    </table>
-</div>
+@php
+    $statusText = 'LUNAS';
+    $statusClass = 'status-paid';
+@endphp
 
-{{-- ================= INFO ================= --}}
+@include('partials.payment-header', [
+    'title' => 'KUITANSI',
+    'statusText' => $statusText,
+    'statusClass' => $statusClass,
+])
+
 <table class="info-table">
     <tr>
         <td width="20%">Nomor Kuitansi</td>
@@ -141,7 +49,6 @@
     </tr>
 </table>
 
-{{-- ================= ITEMS ================= --}}
 <table class="payment">
     <thead>
         <tr>
@@ -184,17 +91,11 @@
     </tbody>
 </table>
 
-{{-- ================= FOOTER ================= --}}
-<div class="footer">
-    <div class="signature">
-        <div>{{ now()->format('d F Y') }}</div>
-        <div class="name">
-            {{ $receipt->creator->username ?? 'Bendahara' }}
-        </div>
-        <div>Bendahara</div>
-    </div>
-    <div class="clear"></div>
-</div>
+@include('partials.payment-footer', [
+    'signatureDate' => now()->format('d F Y'),
+    'signatureName' => $receipt->creator->username ?? 'Bendahara',
+    'signatureRole' => 'Bendahara',
+])
 
 </body>
 </html>

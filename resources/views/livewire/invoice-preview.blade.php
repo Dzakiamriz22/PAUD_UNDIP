@@ -1,118 +1,103 @@
-<div class="bg-white border rounded-xl p-6 shadow-sm space-y-6">
+@include('partials.payment-styles')
+
+<div class="payment-doc">
 
     @php
         $isPaid = !empty($invoice->paid_at) || $invoice->status === 'paid';
-        $statusText = $isPaid ? 'LUNAS' : strtoupper($invoice->status ?? 'MENUNGGU');
-        $statusClass = $isPaid ? 'text-green-600' : 'text-yellow-600';
+        $statusText = $isPaid ? 'LUNAS' : 'BELUM LUNAS';
+        $statusClass = $isPaid ? 'status-paid' : 'status-unpaid';
     @endphp
 
-    {{-- HEADER --}}
-    <div class="flex justify-between items-start border-b pb-4">
-        <div>
-            <div class="text-lg font-bold">PAUD PERMATA UNDIP</div>
-            <div class="text-sm text-gray-500">Invoice Pembayaran</div>
-        </div>
-        <div class="text-right">
-            <div class="text-xl font-bold {{ $statusClass }}">
-                {{ $statusText }}
-            </div>
-            <div class="text-sm text-gray-500">
-                {{ $invoice->invoice_number }}
-            </div>
-        </div>
-    </div>
+    @include('partials.payment-header', [
+        'title' => 'INVOICE',
+        'statusText' => $statusText,
+        'statusClass' => $statusClass,
+    ])
 
-    {{-- INFO --}}
-    <div class="grid grid-cols-2 gap-4 text-sm">
-        <div>
-            <div class="text-gray-500">Nama Siswa</div>
-            <div class="font-semibold">
-                {{ $invoice->student->name ?? '-' }}
-            </div>
-        </div>
-        <div>
-            <div class="text-gray-500">Kelas</div>
-            <div class="font-semibold">
-                {{ optional(optional($invoice->student)->activeClass)->classRoom->category ?? '-' }}
-            </div>
-            <div class="text-gray-500 text-xs">
-                Tahun Ajaran: {{ $invoice->academicYear->year ?? '-' }}
-            </div>
-        </div>
-    </div>
+    <table class="info-table">
+        <tr>
+            <td width="20%">No Transaksi</td>
+            <td width="30%">: {{ $invoice->invoice_number }}</td>
+            <td width="20%">Tanggal</td>
+            <td width="30%">: {{ $invoice->issued_at?->format('d/m/Y') }}</td>
+        </tr>
+        <tr>
+            <td>No Induk</td>
+            <td>: {{ optional($invoice->student)->nis ?? '-' }}</td>
+            <td>Waktu</td>
+            <td>: {{ $invoice->issued_at?->format('H:i') }}</td>
+        </tr>
+        <tr>
+            <td>Nama Siswa</td>
+            <td>: {{ optional($invoice->student)->name ?? '-' }}</td>
+            <td>Kelas</td>
+            <td>: {{ optional(optional($invoice->student)->activeClass)->classRoom->category ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td>Tahun Ajaran</td>
+            <td colspan="3">: {{ optional($invoice->academicYear)->year ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td>Jatuh Tempo</td>
+            <td colspan="3">: {{ $invoice->due_date?->format('d/m/Y') ?? '-' }}</td>
+        </tr>
+    </table>
 
-    <div class="grid grid-cols-2 gap-4 text-sm">
-        <div>
-            <div class="text-gray-500">Metode Pembayaran</div>
-            <div class="font-semibold">
-                @if($invoice->va_bank)
-                    {{ strtoupper($invoice->va_bank) }} — VA: {{ $invoice->va_number }}
-                @else
-                    Transfer / Tunai
-                @endif
-            </div>
-        </div>
-        <div>
-            <div class="text-gray-500">Tanggal Invoice</div>
-            <div class="font-semibold">
-                {{ $invoice->issued_at?->format('d/m/Y H:i') }}
-            </div>
-        </div>
-    </div>
-
-    {{-- ITEMS --}}
-    <div>
-        <div class="font-semibold mb-2">Rincian Pembayaran</div>
-
-        <table class="w-full text-sm border">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="border px-3 py-2 text-left">Item</th>
-                    <th class="border px-3 py-2 text-right">Nominal</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($invoice->items as $item)
-                    @php
-                        $isDiscount = $item->tariff?->incomeType?->is_discount ?? false;
-                        $title = $item->tariff?->incomeType->name
-                            ?? $item->description
-                            ?? $item->name
-                            ?? '-';
-
-                        $showDescription = $item->description
-                            && empty($item->tariff);
-                    @endphp
-
-                    <tr class="{{ $isDiscount ? 'text-gray-500 italic' : '' }}">
-                        <td class="border px-3 py-2">
-                            {{ $title }}
-                            @if ($showDescription)
-                                <div class="text-xs text-gray-400">
-                                    {{ $item->description }}
-                                </div>
-                            @endif
-                        </td>
-                        <td class="border px-3 py-2 text-right">
-                            {{ $isDiscount ? '− ' : '' }}
-                            Rp {{ number_format(abs($item->final_amount), 0, ',', '.') }}
-                        </td>
-                    </tr>
-                @endforeach
-
-                <tr class="font-bold bg-gray-50">
-                    <td class="border px-3 py-2">Total Tagihan</td>
-                    <td class="border px-3 py-2 text-right">
-                        Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}
+    <table class="payment">
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Rincian Pembayaran</th>
+                <th width="30%" class="amount">Nominal</th>
+            </tr>
+        </thead>
+        <tbody>
+            @php
+                $subtotal = 0;
+                $totalDiscount = 0;
+            @endphp
+            @foreach($invoice->items as $item)
+                @php
+                    $isDiscount = $item->tariff?->incomeType?->is_discount ?? false;
+                    $amount = $item->amount ?? $item->final_amount ?? 0;
+                    if ($isDiscount) {
+                        $totalDiscount += abs($amount);
+                    } else {
+                        $subtotal += $amount;
+                    }
+                @endphp
+                <tr class="{{ $isDiscount ? 'discount' : '' }}">
+                    <td width="40">{{ $loop->iteration }}</td>
+                    <td>
+                        {{ strtoupper($item->description ?? $item->name ?? '-') }}
                     </td>
+                    <td class="amount">{{ $isDiscount ? '− ' : '' }}Rp {{ number_format(abs($amount), 0, ',', '.') }}</td>
                 </tr>
-            </tbody>
-        </table>
-    </div>
+            @endforeach
 
-    {{-- FOOTER --}}
-    <div class="flex justify-end text-sm text-gray-500 pt-4 border-t">
-        Dibuat oleh {{ $invoice->creator->username ?? 'Bendahara' }}
-    </div>
+            <tr class="small">
+                <td colspan="2">Subtotal</td>
+                <td class="amount">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
+            </tr>
+
+            @if($totalDiscount > 0)
+                <tr class="small">
+                    <td colspan="2">Total Diskon</td>
+                    <td class="amount">− Rp {{ number_format($totalDiscount, 0, ',', '.') }}</td>
+                </tr>
+            @endif
+
+            <tr class="total-row">
+                <th colspan="2">Total Tagihan</th>
+                <th class="amount">Rp {{ number_format(max(0, $subtotal - $totalDiscount), 0, ',', '.') }}</th>
+            </tr>
+        </tbody>
+    </table>
+
+    @include('partials.payment-footer', [
+        'signatureDate' => now()->format('d F Y'),
+        'signatureName' => $invoice->creator->username ?? 'Bendahara',
+        'signatureRole' => 'Petugas / Bendahara',
+    ])
 
 </div>
