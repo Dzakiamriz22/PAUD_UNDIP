@@ -70,7 +70,7 @@ services:
     profiles: ["dev"]
     ports:
       - "8025:8025"     # Web UI
-      - "1025:1025"     # SMTP
+      - "11025:1025"     # SMTP
     networks:
       - app-bridge
 

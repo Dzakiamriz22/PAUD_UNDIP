@@ -123,6 +123,22 @@
         <td>Waktu</td>
         <td>: {{ $receipt->payment_date->format('H:i') }}</td>
     </tr>
+    <tr>
+        <td>Kelas</td>
+        <td>: {{ optional(optional($receipt->invoice->student)->activeClass)->classRoom->category ?? '-' }}</td>
+        <td>Tahun Ajaran</td>
+        <td>: {{ optional($receipt->invoice->academicYear)->year ?? '-' }}</td>
+    </tr>
+    <tr>
+        <td>Metode Pembayaran</td>
+        <td colspan="3">
+            @if($receipt->invoice->va_bank)
+                {{ strtoupper($receipt->invoice->va_bank) }} — VA: {{ $receipt->invoice->va_number }}
+            @else
+                Transfer / Tunai
+            @endif
+        </td>
+    </tr>
 </table>
 
 {{-- ================= ITEMS ================= --}}
@@ -139,9 +155,16 @@
                 $isDiscount = $item->tariff?->incomeType?->is_discount ?? false;
             @endphp
             <tr class="{{ $isDiscount ? 'discount' : '' }}">
+                @php
+                    $title = $item->tariff?->incomeType->name ?? $item->description ?? $item->name ?? '-';
+                    $showDescription = $item->description && (
+                        empty($item->tariff) ||
+                        (($item->tariff?->incomeType?->name ?? '') !== ($item->description ?? ''))
+                    );
+                @endphp
                 <td>
-                    {{ $item->tariff->incomeType->name ?? '-' }}
-                    @if ($item->description)
+                    {{ $title }}
+                    @if ($showDescription)
                         <br><small>{{ $item->description }}</small>
                     @endif
                 </td>

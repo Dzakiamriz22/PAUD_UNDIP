@@ -7,13 +7,14 @@ use App\Models\Receipt;
 
 class ReceiptPreview extends Component
 {
-    public Receipt $record;
+    public Receipt $receipt;
 
     public function mount(Receipt $record): void
     {
-        $this->record = $record->load([
-            'invoice.student',
+        $this->receipt = $record->load([
+            'invoice.student.activeClass.classRoom',
             'invoice.items.tariff.incomeType',
+            'invoice.academicYear',
             'creator',
         ]);
     }
@@ -21,7 +22,7 @@ class ReceiptPreview extends Component
     public function render()
     {
         return view('livewire.receipt-preview', [
-            'receipt' => $this->record,
+            'receipt' => $this->receipt,
         ]);
     }
 }
