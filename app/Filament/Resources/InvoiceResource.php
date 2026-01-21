@@ -875,14 +875,7 @@ class InvoiceResource extends Resource
                         'gray' => 'cancel',
                     ]),
 
-                Tables\Columns\TextColumn::make('receipt.receipt_number')
-                    ->label('Kuitansi')
-                    ->placeholder('-')
-                    ->badge()
-                    ->color('success')
-                    ->formatStateUsing(fn ($state) => $state ? 'Sudah Ada' : null)
-                    ->default('-')
-                    ->sortable(),
+                
             ])
 
             /* FILTER */
@@ -988,10 +981,7 @@ class InvoiceResource extends Resource
                     }),
             ])
 
-            ->defaultSort('created_at', 'desc')
-            ->modifyQueryUsing(function (Builder $query) {
-                return $query->with('receipt');
-            });
+            ->defaultSort('created_at', 'desc');
     }
 
     /* ===============================

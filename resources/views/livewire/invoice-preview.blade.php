@@ -41,6 +41,16 @@
             <td>Jatuh Tempo</td>
             <td colspan="3">: {{ $invoice->due_date?->format('d/m/Y') ?? '-' }}</td>
         </tr>
+        <tr>
+            <td>Metode Pembayaran</td>
+            <td colspan="3">
+                @if($invoice->va_bank)
+                    : {{ strtoupper($invoice->va_bank) }} — VA: {{ $invoice->va_number }}
+                @else
+                    : Transfer / Tunai
+                @endif
+            </td>
+        </tr>
     </table>
 
     <table class="payment">
