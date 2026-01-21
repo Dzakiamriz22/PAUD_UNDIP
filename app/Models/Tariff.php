@@ -19,6 +19,8 @@ class Tariff extends Model
         'amount',
         'billing_type',
         'is_active',
+        'status',
+        'rejection_note',
         'proposed_by',
         'approved_by',
         'approved_at',

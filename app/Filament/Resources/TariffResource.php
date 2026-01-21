@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\TariffResource\Pages;
 use App\Models\Tariff;
-use App\Models\IncomeType;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -23,15 +22,15 @@ class TariffResource extends Resource
     protected static ?string $pluralLabel = 'Tarif';
 
     /* =====================================================
-     |  KONSTANTA (TANPA FILE BARU)
+     |  KONSTANTA
      ===================================================== */
     public const CLASS_CATEGORIES = [
-        'TK' => 'TK',
-        'KB' => 'KB',
+        'TK'       => 'TK',
+        'KB'       => 'KB',
         'TPA_PAUD' => 'TPA PAUD',
-        'TPA_SD' => 'TPA SD',
-        'TPA_TK' => 'TPA + TK',
-        'TPA_KB' => 'TPA + KB',
+        'TPA_SD'   => 'TPA SD',
+        'TPA_TK'   => 'TPA + TK',
+        'TPA_KB'   => 'TPA + KB',
     ];
 
     public const BILLING_TYPES = [
@@ -41,6 +40,25 @@ class TariffResource extends Resource
         'daily'   => 'Harian',
         'penalty' => 'Denda',
     ];
+
+    /* =====================================================
+     |  AKSES
+     ===================================================== */
+    public static function canCreate(): bool
+    {
+        return Auth::user()->hasRole(['admin', 'bendahara']);
+    }
+
+    public static function canEdit($record): bool
+    {
+        return Auth::user()->hasRole(['admin', 'bendahara'])
+            && in_array($record->status, ['pending', 'rejected']);
+    }
+
+    public static function canDelete($record): bool
+    {
+        return Auth::user()->hasRole(['admin', 'bendahara']);
+    }
 
     /* =====================================================
      |  FORM
@@ -72,12 +90,26 @@ class TariffResource extends Resource
                         ->numeric()
                         ->prefix('Rp')
                         ->required(),
-
-                    Forms\Components\Toggle::make('is_active')
-                        ->label('Aktif')
-                        ->default(true),
                 ])
                 ->columns(2),
+
+            /* ===== ALASAN PENOLAKAN ===== */
+            Forms\Components\Section::make('Alasan Penolakan')
+                ->schema([
+                    Forms\Components\Textarea::make('rejection_note')
+                        ->label('Catatan Kepala Sekolah')
+                        ->rows(4)
+                        ->disabled() // hanya untuk dibaca admin/bendahara
+                        ->visible(fn ($record) => $record?->status === 'rejected'),
+                ])
+                ->visible(fn ($record) => $record?->status === 'rejected'),
+
+            /* ===== FIELD SISTEM ===== */
+            Forms\Components\Hidden::make('status')
+                ->default('pending'),
+
+            Forms\Components\Hidden::make('is_active')
+                ->default(false),
 
             Forms\Components\Hidden::make('proposed_by')
                 ->default(fn () => Auth::id()),
@@ -99,79 +131,122 @@ class TariffResource extends Resource
                 Tables\Columns\TextColumn::make('class_category')
                     ->label('Kategori Kelas')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => self::CLASS_CATEGORIES[$state] ?? $state),
+                    ->formatStateUsing(fn ($state) =>
+                        self::CLASS_CATEGORIES[$state] ?? $state
+                    ),
 
                 Tables\Columns\TextColumn::make('billing_type')
                     ->label('Jenis Pembayaran')
-                    ->formatStateUsing(fn ($state) => self::BILLING_TYPES[$state] ?? '-')
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn ($state) =>
+                        self::BILLING_TYPES[$state] ?? '-'
+                    ),
 
                 Tables\Columns\TextColumn::make('amount')
                     ->label('Nominal')
                     ->money('IDR')
                     ->sortable(),
 
-                Tables\Columns\IconColumn::make('approved_at')
-                    ->label('Disetujui')
-                    ->boolean(),
+                Tables\Columns\BadgeColumn::make('status')
+                    ->label('Status')
+                    ->colors([
+                        'warning' => 'pending',
+                        'success' => 'approved',
+                        'danger'  => 'rejected',
+                    ])
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'pending'  => 'Menunggu',
+                        'approved' => 'Disetujui',
+                        'rejected' => 'Ditolak',
+                        default    => $state,
+                    }),
 
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Aktif')
                     ->boolean(),
             ])
-            
-            /* ================= GROUPING ================= */
-            ->groups([
-                Tables\Grouping\Group::make('class_category')
-                    ->label('Kategori Kelas')
-                    ->collapsible()
-                    ->getTitleFromRecordUsing(function (Tariff $record) {
-                        return self::CLASS_CATEGORIES[$record->class_category] ?? $record->class_category;
-                    }),
-            ])
 
-            /* ================= FILTER ================= */
-            ->filters([
-                Tables\Filters\SelectFilter::make('income_type_id')
-                    ->label('Jenis Pendapatan')
-                    ->relationship('incomeType', 'name'),
-
-                Tables\Filters\SelectFilter::make('class_category')
-                    ->label('Kategori Kelas')
-                    ->options(self::CLASS_CATEGORIES),
-
-                Tables\Filters\SelectFilter::make('billing_type')
-                    ->label('Jenis Pembayaran')
-                    ->options(self::BILLING_TYPES),
-
-                Tables\Filters\TernaryFilter::make('approved_at')
-                    ->label('Status Persetujuan')
-                    ->nullable()
-                    ->trueLabel('Disetujui')
-                    ->falseLabel('Belum Disetujui'),
-            ])
-
-            /* ================= ACTION ================= */
             ->actions([
+                /* ===== APPROVE ===== */
                 Tables\Actions\Action::make('approve')
-                    ->label('Setujui')
-                    ->icon('heroicon-o-check-circle')
+                    ->label('Approve')
+                    ->icon('heroicon-o-check')
                     ->color('success')
-                    ->visible(fn (Tariff $record) => is_null($record->approved_at))
+                    ->visible(fn (Tariff $record) =>
+                        $record->status === 'pending'
+                        && Auth::user()->hasRole('kepala_sekolah')
+                    )
                     ->action(fn (Tariff $record) => $record->update([
-                        'approved_by' => Auth::id(),
-                        'approved_at' => now(),
+                        'status'         => 'approved',
+                        'approved_by'    => Auth::id(),
+                        'approved_at'    => now(),
+                        'rejection_note' => null,
                     ])),
 
+                /* ===== REJECT DENGAN ALASAN ===== */
+                Tables\Actions\Action::make('reject')
+                    ->label('Reject')
+                    ->icon('heroicon-o-x-mark')
+                    ->color('danger')
+                    ->visible(fn (Tariff $record) =>
+                        $record->status === 'pending'
+                        && Auth::user()->hasRole('kepala_sekolah')
+                    )
+                    ->form([
+                        Forms\Components\Textarea::make('rejection_note')
+                            ->label('Alasan Penolakan')
+                            ->required()
+                            ->rows(4),
+                    ])
+                    ->action(function (Tariff $record, array $data) {
+                        $record->update([
+                            'status'         => 'rejected',
+                            'rejection_note' => $data['rejection_note'],
+                        ]);
+                    }),
+
+                /* ===== AKTIF / NONAKTIF ===== */
+                Tables\Actions\Action::make('toggleActive')
+                    ->label(fn (Tariff $record) =>
+                        $record->is_active ? 'Nonaktifkan' : 'Aktifkan'
+                    )
+                    ->icon(fn (Tariff $record) =>
+                        $record->is_active
+                            ? 'heroicon-o-x-circle'
+                            : 'heroicon-o-check-circle'
+                    )
+                    ->color(fn (Tariff $record) =>
+                        $record->is_active ? 'danger' : 'success'
+                    )
+                    ->visible(fn (Tariff $record) =>
+                        $record->status === 'approved'
+                        && Auth::user()->hasRole(['admin', 'bendahara'])
+                    )
+                    ->action(fn (Tariff $record) =>
+                        $record->update([
+                            'is_active' => ! $record->is_active,
+                        ])
+                    ),
+
+                /* ===== EDIT (AJUKAN ULANG) ===== */
                 Tables\Actions\EditAction::make()
-                    ->visible(fn (Tariff $record) => is_null($record->approved_at)),
+                    ->visible(fn (Tariff $record) =>
+                        Auth::user()->hasRole(['admin', 'bendahara'])
+                        && in_array($record->status, ['pending', 'rejected'])
+                    )
+                    ->mutateFormDataUsing(function (array $data) {
+                        $data['status'] = 'pending';
+                        $data['rejection_note'] = null; // reset catatan
+                        return $data;
+                    }),
 
+                /* ===== DELETE ===== */
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn (Tariff $record) => is_null($record->approved_at)),
+                    ->visible(fn () =>
+                        Auth::user()->hasRole(['admin', 'bendahara'])
+                    ),
             ])
-
-            ->defaultSort('created_at', 'desc')
-            ->defaultGroup('class_category');
+            ->defaultSort('created_at', 'desc');
     }
 
     /* =====================================================
@@ -179,8 +254,7 @@ class TariffResource extends Resource
      ===================================================== */
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->with('incomeType');
+        return parent::getEloquentQuery()->with('incomeType');
     }
 
     /* =====================================================
@@ -189,9 +263,9 @@ class TariffResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListTariffs::route('/'),
+            'index'  => Pages\ListTariffs::route('/'),
             'create' => Pages\CreateTariff::route('/create'),
-            'edit' => Pages\EditTariff::route('/{record}/edit'),
+            'edit'   => Pages\EditTariff::route('/{record}/edit'),
         ];
     }
 }
