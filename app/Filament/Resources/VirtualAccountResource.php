@@ -19,6 +19,8 @@ class VirtualAccountResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
     protected static ?string $navigationLabel = 'Virtual Accounts';
+    protected static ?string $navigationGroup = 'Keuangan';
+    protected static ?int $navigationSort = 3;
 
     public static function form(Form $form): Form
     {
@@ -49,17 +51,36 @@ class VirtualAccountResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('id')->label('ID')->sortable(),
-                TextColumn::make('bank_name')->searchable()->sortable(),
-                TextColumn::make('va_number')->searchable()->label('VA Number'),
-                BooleanColumn::make('is_active')->label('Active')->sortable(),
-                BadgeColumn::make('incomeTypes_count')
-                    ->label('Income Types')
-                    ->counts('incomeTypes')
-                    ->colors([
-                        'primary',
-                    ]),
-                TextColumn::make('created_at')->dateTime()->label('Created')->sortable(),
+                TextColumn::make('id')
+                    ->label('ID')
+                    ->sortable()
+                    ->extraHeaderAttributes(['class' => 'px-2 py-1 text-xs'])
+                    ->extraCellAttributes(['class' => 'px-2 py-1 text-sm']),
+
+                TextColumn::make('bank_name')
+                    ->searchable()
+                    ->sortable()
+                    ->extraHeaderAttributes(['class' => 'px-2 py-1 text-xs'])
+                    ->extraCellAttributes(['class' => 'px-2 py-1 text-sm']),
+
+                TextColumn::make('va_number')
+                    ->searchable()
+                    ->label('VA Number')
+                    ->extraHeaderAttributes(['class' => 'px-2 py-1 text-xs'])
+                    ->extraCellAttributes(['class' => 'px-2 py-1 text-sm']),
+
+                BooleanColumn::make('is_active')
+                    ->label('Active')
+                    ->sortable()
+                    ->extraHeaderAttributes(['class' => 'px-2 py-1 text-xs'])
+                    ->extraCellAttributes(['class' => 'px-2 py-1 text-sm']),
+
+                TextColumn::make('created_at')
+                    ->dateTime()
+                    ->label('Created')
+                    ->sortable()
+                    ->extraHeaderAttributes(['class' => 'px-2 py-1 text-xs'])
+                    ->extraCellAttributes(['class' => 'px-2 py-1 text-sm']),
             ])
             ->filters([
                 // add filters if needed
