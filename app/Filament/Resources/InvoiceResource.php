@@ -432,7 +432,18 @@ class InvoiceResource extends Resource
 
                             Forms\Components\Select::make('virtual_account_id')
                                 ->label('Bank Pembayaran')
-                                ->options(VirtualAccount::pluck('bank_name', 'id'))
+                                ->options(function () {
+                                    $rows = \DB::table('virtual_accounts')
+                                        ->selectRaw('MIN(id) as id, bank_name, va_number')
+                                        ->where('is_active', 1)
+                                        ->groupBy('bank_name', 'va_number')
+                                        ->orderBy('bank_name')
+                                        ->get();
+
+                                    return $rows->mapWithKeys(function ($r) {
+                                        return [ $r->id => ($r->bank_name . ' - ' . $r->va_number) ];
+                                    })->toArray();
+                                })
                                 ->required(),
                         ]),
 
