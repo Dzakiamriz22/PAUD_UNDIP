@@ -21,7 +21,7 @@ class BatchInvoiceService
 
         return Pdf::loadView('pdf.batch-invoice', [
             'invoices' => $invoices,
-        ])->setPaper('A4', 'landscape');
+        ])->setPaper('A4', 'portrait');
     }
 
     /**
@@ -37,6 +37,6 @@ class BatchInvoiceService
 
         return Pdf::loadView('pdf.invoice-single', [
             'invoice' => $invoice,
-        ])->setPaper('A4', 'landscape');
+        ])->setPaper('A4', 'portrait');
     }
 }

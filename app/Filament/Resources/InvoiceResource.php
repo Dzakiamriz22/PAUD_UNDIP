@@ -872,6 +872,7 @@ class InvoiceResource extends Resource
                     ->colors([
                         'danger' => 'unpaid',
                         'success' => 'paid',
+                        'warning' => 'expired',
                         'gray' => 'cancel',
                     ]),
 

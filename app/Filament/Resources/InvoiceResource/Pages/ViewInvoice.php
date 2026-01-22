@@ -34,7 +34,7 @@ class ViewInvoice extends ViewRecord
 
         // Use the invoice-doc view for consistent page/pdf appearance
         $pdf = Pdf::loadView('pdf.invoice-single', compact('invoice'))
-            ->setPaper('A4', 'landscape');
+            ->setPaper('A4', 'portrait');
 
         // Hilangkan slash agar aman untuk nama file
         $safeInvoiceNumber = str_replace('/', '-', $invoice->invoice_number);
