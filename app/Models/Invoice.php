@@ -103,4 +103,23 @@ class Invoice extends Model
             'total_amount' => $totalAmount,
         ]);
     }
+
+    /**
+     * Override status accessor to show `expired` when unpaid and past due date.
+     * This does not change the stored value in the database, only the presented value.
+     */
+    public function getStatusAttribute($value)
+    {
+        // If already a non-unpaid status, return it as-is
+        if (!empty($value) && $value !== 'unpaid') {
+            return $value;
+        }
+
+        // If due_date exists and is past, show expired for unpaid invoices
+        if ($this->due_date && $this->due_date->isPast()) {
+            return 'expired';
+        }
+
+        return $value;
+    }
 }

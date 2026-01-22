@@ -1,6 +1,6 @@
 <style>
-    /* Compact professional invoice styles for A4 landscape */
-    @page { size: A4 landscape; margin: 12mm; }
+    /* Compact professional invoice styles for A4 portrait */
+    @page { size: A4 portrait; margin: 12mm; }
 
     body.payment-doc {
         font-family: DejaVu Sans, Arial, sans-serif;
