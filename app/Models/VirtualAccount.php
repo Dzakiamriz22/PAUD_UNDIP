@@ -26,4 +26,9 @@ class VirtualAccount extends Model
     {
         return $this->belongsTo(IncomeType::class);
     }
+
+    public function incomeTypes()
+    {
+        return $this->belongsToMany(IncomeType::class, 'income_type_virtual_account', 'virtual_account_id', 'income_type_id')->withTimestamps();
+    }
 }
