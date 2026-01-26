@@ -21,6 +21,7 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\Section as InfolistSection;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class StudentResource extends Resource
 {
@@ -241,4 +242,30 @@ class StudentResource extends Resource
             'edit' => Pages\EditStudent::route('/{record}/edit'),
         ];
     }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->can('view_any_student') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('create_student') ?? false;
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return auth()->user()?->can('view_student') ?? false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()?->can('delete_student') ?? false;
+    }
+
+    public static function canUpdate(Model $record): bool
+    {
+        return auth()->user()?->can('update_student') ?? false;
+    }
+
 }

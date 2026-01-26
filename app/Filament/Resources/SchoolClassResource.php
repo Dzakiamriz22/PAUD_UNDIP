@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class SchoolClassResource extends Resource
 {
@@ -24,24 +25,7 @@ class SchoolClassResource extends Resource
     protected static ?string $navigationLabel = 'Kelas';
     protected static ?string $pluralLabel = 'Kelas';
 
-    /**
-     * ✅ Semua role sah boleh lihat menu
-     */
-    public static function shouldRegisterNavigation(): bool
-    {
-        $user = auth()->user();
-
-        return $user->isSuperAdmin()
-            || $user->hasRole('admin')
-            || $user->isGuru()
-            || $user->isKepsek()
-            || $user->isBendahara();
-    }
-
-    /**
-     * ✅ FINAL — Role-based data access
-     * ❌ TANPA canView / authorize
-     */
+    
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
@@ -66,18 +50,7 @@ class SchoolClassResource extends Resource
         return $query->whereRaw('1 = 0');
     }
 
-    /**
-     * 🔒 CREATE hanya admin
-     */
-    public static function canCreate(): bool
-    {
-        return auth()->user()->isSuperAdmin()
-            || auth()->user()->hasRole('admin');
-    }
-
-    /**
-     * 🧊 FORM READ ONLY untuk non-admin
-     */
+   
     public static function form(Form $form): Form
     {
         $isReadOnly = fn () =>
@@ -133,6 +106,7 @@ class SchoolClassResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('academicYear.label')
                     ->label('Tahun Ajaran')
@@ -208,5 +182,30 @@ class SchoolClassResource extends Resource
             'create' => Pages\CreateSchoolClass::route('/create'),
             'edit'   => Pages\EditSchoolClass::route('/{record}/edit'),
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->can('view_any_school::class') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('create_school::class') ?? false;
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return auth()->user()?->can('view_school::class') ?? false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()?->can('delete_school::class') ?? false;
+    }
+
+    public static function canUpdate(Model $record): bool
+    {
+        return auth()->user()?->can('update_school::class') ?? false;
     }
 }

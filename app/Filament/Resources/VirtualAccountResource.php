@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BooleanColumn;
 use Filament\Tables\Columns\BadgeColumn;
+use Illuminate\Database\Eloquent\Model;
 
 class VirtualAccountResource extends Resource
 {
@@ -127,5 +128,30 @@ class VirtualAccountResource extends Resource
             'create' => Pages\CreateVirtualAccount::route('/create'),
             'edit' => Pages\EditVirtualAccount::route('/{record}/edit'),
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->can('view_any_virtual_account') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('create_virtual_account') ?? false;
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return auth()->user()?->can('view_virtual_account') ?? false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()?->can('delete_virtual_account') ?? false;
+    }
+
+    public static function canUpdate(Model $record): bool
+    {
+        return auth()->user()?->can('update_virtual_account') ?? false;
     }
 }

@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class TeacherResource extends Resource
 {
@@ -21,18 +22,6 @@ class TeacherResource extends Resource
     protected static ?string $navigationGroup = 'Manajemen';
     protected static ?string $navigationLabel = 'Guru & Staff';
     protected static ?string $pluralLabel     = 'Guru & Staff';
-
-    /* =====================================================
-     | NAVIGATION VISIBILITY
-     ===================================================== */
-    public static function shouldRegisterNavigation(): bool
-    {
-        $user = auth()->user();
-
-        return $user->isSuperAdmin()
-            || $user->hasRole('admin')
-            || $user->isKepsek();
-    }
 
     /* =====================================================
      | QUERY : HANYA USER STAFF
@@ -47,17 +36,6 @@ class TeacherResource extends Resource
                     'kepala_sekolah',
                 ]);
             });
-    }
-
-    /* =====================================================
-     | CREATE PERMISSION
-     ===================================================== */
-    public static function canCreate(): bool
-    {
-        $user = auth()->user();
-
-        return $user->isSuperAdmin()
-            || $user->hasRole('admin');
     }
 
     /* =====================================================
@@ -199,4 +177,30 @@ class TeacherResource extends Resource
             'edit'   => Pages\EditTeacher::route('/{record}/edit'),
         ];
     }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->can('view_any_teacher') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('create_teacher') ?? false;
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return auth()->user()?->can('view_teacher') ?? false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()?->can('delete_teacher') ?? false;
+    }
+
+    public static function canUpdate(Model $record): bool
+    {
+        return auth()->user()?->can('update_teacher') ?? false;
+    }
+
 }

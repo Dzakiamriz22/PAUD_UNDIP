@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Notifications\Notification;
 use App\Services\BatchInvoiceService;
 use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Model;
 
 class InvoiceResource extends Resource
 {
@@ -1006,5 +1007,30 @@ class InvoiceResource extends Resource
             'create' => Pages\CreateInvoice::route('/create'),
             'view' => Pages\ViewInvoice::route('/{record}'),
         ];
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->can('view_any_invoice') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('create_invoice') ?? false;
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return auth()->user()?->can('view_invoice') ?? false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()?->can('delete_invoice') ?? false;
+    }
+
+    public static function canUpdate(Model $record): bool
+    {
+        return auth()->user()?->can('update_invoice') ?? false;
     }
 }
