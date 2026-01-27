@@ -19,6 +19,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
+use Illuminate\Database\Eloquent\Model;
 
 class ReceiptResource extends Resource
 {
@@ -289,5 +290,31 @@ class ReceiptResource extends Resource
             'edit' => Pages\EditReceipt::route('/{record}/edit'),
         ];
     }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->can('view_any_receipt') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('create_receipt') ?? false;
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return auth()->user()?->can('view_receipt') ?? false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()?->can('delete_receipt') ?? false;
+    }
+
+    public static function canUpdate(Model $record): bool
+    {
+        return auth()->user()?->can('update_receipt') ?? false;
+    }
+
 }
 

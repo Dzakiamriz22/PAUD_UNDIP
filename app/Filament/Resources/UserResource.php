@@ -561,4 +561,29 @@ class UserResource extends Resource implements HasShieldPermissions
     {
         return UserResource::getUrl('index', ['tableSearch' => $record->fullname]);
     }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->can('view_any_teacher') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('create_teacher') ?? false;
+    }
+
+    public static function canView(Model $record): bool
+    {
+        return auth()->user()?->can('view_teacher') ?? false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return auth()->user()?->can('delete_teacher') ?? false;
+    }
+
+    public static function canUpdate(Model $record): bool
+    {
+        return auth()->user()?->can('update_teacher') ?? false;
+    }
 }

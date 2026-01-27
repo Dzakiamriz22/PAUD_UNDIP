@@ -10,6 +10,8 @@ use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class AcademicYearResource extends Resource
 {
@@ -20,6 +22,11 @@ class AcademicYearResource extends Resource
     protected static ?string $navigationLabel = 'Tahun Ajaran';
     protected static ?string $pluralLabel = 'Tahun Ajaran';
 
+    /**
+     * ======================
+     * FORM
+     * ======================
+     */
     public static function form(Form $form): Form
     {
         return $form->schema([
@@ -44,9 +51,15 @@ class AcademicYearResource extends Resource
         ]);
     }
 
+    /**
+     * ======================
+     * TABLE
+     * ======================
+     */
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('year')
                     ->label('Tahun Ajaran')
@@ -71,12 +84,22 @@ class AcademicYearResource extends Resource
             ])
             ->defaultSort('is_active', 'desc')
             ->actions([
+
+                /**
+                 * SET AKTIF (CUSTOM ACTION)
+                 */
                 Tables\Actions\Action::make('setActive')
                     ->label('Set Aktif')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn ($record) => ! $record->is_active)
+                    ->visible(fn ($record) =>
+                        ! $record->is_active
+                        && Auth::user()?->can('set_active_academic::year')
+                    )
                     ->action(function ($record) {
+                        AcademicYear::where('is_active', true)
+                            ->update(['is_active' => false]);
+
                         $record->update(['is_active' => true]);
 
                         Notification::make()
@@ -85,25 +108,89 @@ class AcademicYearResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\EditAction::make(),
+                /**
+                 * EDIT
+                 */
+                Tables\Actions\EditAction::make()
+                    ->visible(fn () =>
+                        Auth::user()?->can('update_academic::year')
+                    ),
 
+                /**
+                 * DELETE (jika suatu saat diaktifkan)
+                 */
                 // Tables\Actions\DeleteAction::make()
-                //     ->visible(fn ($record) => ! $record->is_active)
-                //     ->disabled(fn ($record) => $record->schoolClasses()->exists())
-                //     ->tooltip('Tidak bisa dihapus jika sudah digunakan oleh kelas'),
+                //     ->visible(fn () =>
+                //         Auth::user()?->can('delete_academicyear')
+                //     ),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
-                    ->disabled(),
+                    ->visible(fn () =>
+                        Auth::user()?->can('delete_academic::year')
+                    ),
             ]);
     }
 
+    /**
+     * ======================
+     * PAGES
+     * ======================
+     */
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListAcademicYears::route('/'),
+            'index'  => Pages\ListAcademicYears::route('/'),
             'create' => Pages\CreateAcademicYear::route('/create'),
-            'edit' => Pages\EditAcademicYear::route('/{record}/edit'),
+            'edit'   => Pages\EditAcademicYear::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * ======================
+     * PERMISSION GUARD
+     * ======================
+     */
+
+    // Sidebar
+    public static function shouldRegisterNavigation(): bool
+    {
+        return Auth::check()
+            && Auth::user()->can('view_any_academic::year');
+    }
+
+    // Index
+    public static function canViewAny(): bool
+    {
+        return Auth::check()
+            && Auth::user()->can('view_any_academic::year');
+    }
+
+    // View detail
+    public static function canView(Model $record): bool
+    {
+        return Auth::check()
+            && Auth::user()->can('view_academic::year');
+    }
+
+    // Create
+    public static function canCreate(): bool
+    {
+        return Auth::check()
+            && Auth::user()->can('create_academic::year');
+    }
+
+    // Update
+    public static function canUpdate(Model $record): bool
+    {
+        return Auth::check()
+            && Auth::user()->can('update_academic::year');
+    }
+
+    // Delete
+    public static function canDelete(Model $record): bool
+    {
+        return Auth::check()
+            && Auth::user()->can('delete_academic::year');
     }
 }
