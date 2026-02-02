@@ -38,7 +38,7 @@
     /* Items table */
     table.payment { width:100%; border-collapse: collapse; margin-bottom:8px; font-size:11px }
     table.payment th, table.payment td { border:1px solid #e6e9ee; padding:6px 6px }
-    table.payment th { background:#f8fafc; text-align:left; font-weight:600; font-size:11px }
+    table.payment th { text-align:left; font-weight:600; font-size:11px }
     table.payment td { vertical-align: middle }
     table.payment td.amount { text-align:right; white-space:nowrap }
 
