@@ -85,7 +85,7 @@
                 </tr>
             @endforeach
 
-            <tr class="small">
+            <tr">
                 <td colspan="2">Subtotal</td>
                 <td class="amount">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
             </tr>
@@ -97,7 +97,7 @@
                 </tr>
             @endif
 
-            <tr class="total-row">
+            <tr>
                 <th colspan="2">Total Tagihan</th>
                 <th class="amount">Rp {{ number_format(max(0, $subtotal - $totalDiscount), 0, ',', '.') }}</th>
             </tr>
