@@ -75,7 +75,7 @@
                 </tr>
             @endforeach
 
-            <tr class="total-row">
+            <tr>
                 <th>Total Dibayar</th>
                 <th class="amount">Rp {{ number_format($receipt->amount_paid, 0, ',', '.') }}</th>
             </tr>

@@ -66,36 +66,41 @@ class AdminPanelProvider extends PanelProvider
                     return 'https://placehold.co/50.jpeg?text=No\nImage';
                 }
             })
-            ->brandName(function () {
-                try {
-                    return app(GeneralSettings::class)->brand_name;
-                } catch (\Exception $e) {
-                    return 'Admin Panel';
-                }
-            })
-            ->brandLogo(function () {
-                try {
-                    $settings = app(GeneralSettings::class);
-                    return empty($settings->brand_logo) ? 'https://placehold.co/240x50.jpeg?text=No%20Image' : Storage::url($settings->brand_logo);
-                } catch (\Exception $e) {
-                    return 'https://placehold.co/240x50.jpeg?text=No%20Image';
-                }
-            })
-            ->darkModeBrandLogo(function () {
-                try {
-                    $settings = app(GeneralSettings::class);
-                    return empty($settings->brand_logo_dark) ? 'https://placehold.co/240x50.jpeg?text=No%20Image' : Storage::url($settings->brand_logo_dark);
-                } catch (\Exception $e) {
-                    return 'https://placehold.co/240x50.jpeg?text=No%20Image';
-                }
-            })
-            ->brandLogoHeight(function () {
-                try {
-                    return app(GeneralSettings::class)->brand_logoHeight . 'px';
-                } catch (\Exception $e) {
-                    return '50px';
-                }
-            })
+            ->brandName(config('app.name'))
+            // ->brandName(function () {
+            //     try {
+            //         return app(GeneralSettings::class)->brand_name;
+            //     } catch (\Exception $e) {
+            //         return 'Admin Panel';
+            //     }
+            // })
+            ->brandLogo(asset('images/LOGO-PAUD-PERMATA.png'))
+            // ->brandLogo(function () {
+            //     try {
+            //         $settings = app(GeneralSettings::class);
+            //         return empty($settings->brand_logo) ? 'images/LOGO-PAUD-PERMATA.jpeg' : Storage::url($settings->brand_logo);
+            //     } catch (\Exception $e) {
+            //         return 'images/LOGO-PAUD-PERMATA.jpeg';
+            //     }
+            // })
+            ->darkModebrandLogo(asset('images/LOGO-PAUD-PERMATA.png'))
+            // ->darkModeBrandLogo(function () {
+            //     try {
+            //         $settings = app(GeneralSettings::class);
+            //         return empty($settings->brand_logo_dark) ? 'images/LOGO-PAUD-PERMATA.jpeg' : Storage::url($settings->brand_logo_dark);
+            //     } catch (\Exception $e) {
+            //         return 'images/LOGO-PAUD-PERMATA.jpeg';
+            //     }
+            // })
+            ->favicon(asset('images/LOGO-PAUD-PERMATA.png'))
+            ->brandLogoHeight('3rem')
+            // ->brandLogoHeight(function () {
+            //     try {
+            //         return app(GeneralSettings::class)->brand_logoHeight . 'px';
+            //     } catch (\Exception $e) {
+            //         return '50px';
+            //     }
+            // })
             ->colors(function () {
                 try {
                     return app(GeneralSettings::class)->site_theme;
