@@ -44,7 +44,7 @@
         <div class="header">
             <div class="small">&nbsp;</div>
             <div class="title">{{ strtoupper(config('app.name')) }}</div>
-            <div class="small">Alamat Sekolah</div>
+            <div class="small">{{ config('app.address', 'Alamat Sekolah') }}</div>
         </div>
 
         <div class="sep"></div>
