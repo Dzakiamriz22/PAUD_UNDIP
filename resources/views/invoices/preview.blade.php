@@ -35,9 +35,18 @@
     </div>
 
     <div class="wrap">
-        @if(file_exists(public_path('images/logo.png')))
+        @php
+            $logoFile = null;
+            if (file_exists(public_path('images/LOGO-PAUD-PERMATA.png'))) {
+                $logoFile = asset('images/LOGO-PAUD-PERMATA.png');
+            } elseif (file_exists(public_path('images/logo.png'))) {
+                $logoFile = asset('images/logo.png');
+            }
+        @endphp
+
+        @if($logoFile)
             <div class="logo">
-                <img src="{{ asset('images/logo.png') }}" alt="logo" style="width:60px; height:auto;" />
+                <img src="{{ $logoFile }}" alt="logo" style="width:60px; height:auto;" />
             </div>
         @endif
 
