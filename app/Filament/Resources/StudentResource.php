@@ -6,12 +6,17 @@ use App\Filament\Resources\StudentResource\Pages;
 use App\Filament\Resources\StudentResource\RelationManagers\ClassHistoriesRelationManager;
 use App\Filament\Resources\StudentResource\RelationManagers\PaymentHistoryRelationManager;
 use App\Models\Student;
+use App\Models\SchoolClass;
+use App\Models\AcademicYear;
+use App\Models\StudentClassHistory;
 use Filament\Forms;
 use Filament\Tables;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Infolists\Infolist;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Str;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
@@ -162,9 +167,104 @@ class StudentResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('assign_class')
+                    ->label('Assign Kelas')
+                    ->icon('heroicon-o-academic-cap')
+                    ->color('success')
+                    ->form([
+                        Forms\Components\Select::make('class_id')
+                            ->label('Pilih Kelas')
+                            ->options(function () {
+                                return SchoolClass::with('academicYear')
+                                    ->whereHas('academicYear', function ($q) {
+                                        $q->where('is_active', true);
+                                    })
+                                    ->get()
+                                    ->mapWithKeys(fn ($class) => [
+                                        $class->id => "{$class->code} - ({$class->academicYear->label})"
+                                    ]);
+                            })
+                            ->required()
+                            ->searchable(),
+                    ])
+                    ->action(function (Student $record, array $data) {
+                        // Nonaktifkan kelas sebelumnya
+                        StudentClassHistory::where('student_id', $record->id)
+                            ->where('is_active', true)
+                            ->update(['is_active' => false]);
+
+                        // Ambil academic_year_id dari kelas yang dipilih
+                        $class = SchoolClass::find($data['class_id']);
+
+                        // Buat history baru
+                        StudentClassHistory::create([
+                            'id' => (string) Str::uuid(),
+                            'student_id' => $record->id,
+                            'class_id' => $data['class_id'],
+                            'academic_year_id' => $class->academic_year_id,
+                            'is_active' => true,
+                        ]);
+
+                        Notification::make()
+                            ->title('Berhasil assign kelas')
+                            ->success()
+                            ->body("Siswa {$record->name} berhasil dimasukkan ke kelas {$class->code}")
+                            ->send();
+                    })
+                    ->visible(fn () => auth()->user()->can('update_student')),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\BulkAction::make('bulk_assign_class')
+                    ->label('Assign Kelas (Massal)')
+                    ->icon('heroicon-o-academic-cap')
+                    ->color('success')
+                    ->form([
+                        Forms\Components\Select::make('class_id')
+                            ->label('Pilih Kelas')
+                            ->options(function () {
+                                return SchoolClass::with('academicYear')
+                                    ->whereHas('academicYear', function ($q) {
+                                        $q->where('is_active', true);
+                                    })
+                                    ->get()
+                                    ->mapWithKeys(fn ($class) => [
+                                        $class->id => "{$class->code} - {$class->category} ({$class->academicYear->label})"
+                                    ]);
+                            })
+                            ->required()
+                            ->searchable(),
+                    ])
+                    ->action(function ($records, array $data) {
+                        $class = SchoolClass::find($data['class_id']);
+                        $successCount = 0;
+
+                        foreach ($records as $student) {
+                            // Nonaktifkan kelas sebelumnya
+                            StudentClassHistory::where('student_id', $student->id)
+                                ->where('is_active', true)
+                                ->update(['is_active' => false]);
+
+                            // Buat history baru
+                            StudentClassHistory::create([
+                                'id' => (string) Str::uuid(),
+                                'student_id' => $student->id,
+                                'class_id' => $data['class_id'],
+                                'academic_year_id' => $class->academic_year_id,
+                                'is_active' => true,
+                            ]);
+
+                            $successCount++;
+                        }
+
+                        Notification::make()
+                            ->title('Berhasil assign kelas')
+                            ->success()
+                            ->body("{$successCount} siswa berhasil dimasukkan ke kelas {$class->code}")
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion()
+                    ->visible(fn () => auth()->user()->can('update_student')),
             ]);
     }
 
