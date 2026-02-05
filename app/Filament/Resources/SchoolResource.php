@@ -56,6 +56,7 @@ class SchoolResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nama Sekolah')
@@ -70,7 +71,8 @@ class SchoolResource extends Resource
                     ->date(),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn () => auth()->user()?->can('edit_school')),
             ])
             ->bulkActions([]);
     }
