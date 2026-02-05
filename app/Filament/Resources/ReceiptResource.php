@@ -185,6 +185,7 @@ class ReceiptResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('receipt_number')
                     ->label('Nomor Kuitansi')
@@ -272,11 +273,15 @@ class ReceiptResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ViewAction::make()
+                    ->visible(fn () => auth()->user()?->can('view_receipt')),
+
+                Tables\Actions\EditAction::make()
+                    ->visible(fn () => auth()->user()?->can('update_receipt')),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\DeleteBulkAction::make()
+                    ->visible(fn () => auth()->user()?->can('delete_receipt')),
             ])
             ->defaultSort('payment_date', 'desc');
     }

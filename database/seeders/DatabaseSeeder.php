@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             IncomeTypeSeeder::class,
             TariffSeeder::class,
             VirtualAccountSeeder::class,
+            AuditorRoleSeeder::class,
         ]);
     }
 }

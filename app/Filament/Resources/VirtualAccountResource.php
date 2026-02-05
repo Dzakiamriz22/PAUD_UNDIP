@@ -51,6 +51,7 @@ class VirtualAccountResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('id')
                     ->label('ID')
@@ -90,20 +91,26 @@ class VirtualAccountResource extends Resource
                 Tables\Actions\CreateAction::make(),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+            Tables\Actions\ViewAction::make()
+                ->visible(fn () => auth()->user()?->can('view_virtual::account')),
+
+            Tables\Actions\EditAction::make()
+                ->visible(fn () => auth()->user()?->can('update_virtual::account')),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+                Tables\Actions\DeleteBulkAction::make()
+                    ->visible(fn () => auth()->user()?->can('delete_virtual::account')),
                 Tables\Actions\BulkAction::make('activate')
                     ->label('Set Active')
-                    ->action(fn($records) => $records->each->update(['is_active' => true]))
+                    ->visible(fn () => static::canToggleActive())
+                    ->action(fn ($records) => $records->each->update(['is_active' => true]))
                     ->requiresConfirmation()
                     ->color('success'),
 
                 Tables\Actions\BulkAction::make('deactivate')
                     ->label('Set Inactive')
-                    ->action(fn($records) => $records->each->update(['is_active' => false]))
+                    ->visible(fn () => static::canToggleActive())
+                    ->action(fn ($records) => $records->each->update(['is_active' => false]))
                     ->requiresConfirmation()
                     ->color('danger'),
             ]);
@@ -132,26 +139,31 @@ class VirtualAccountResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->can('view_any_virtual_account') ?? false;
+        return auth()->user()?->can('view_any_virtual::account') ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->can('create_virtual_account') ?? false;
+        return auth()->user()?->can('create_virtual::account') ?? false;
     }
 
     public static function canView(Model $record): bool
     {
-        return auth()->user()?->can('view_virtual_account') ?? false;
+        return auth()->user()?->can('view_virtual::account') ?? false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()?->can('delete_virtual_account') ?? false;
+        return auth()->user()?->can('delete_virtual::account') ?? false;
     }
 
     public static function canUpdate(Model $record): bool
     {
-        return auth()->user()?->can('update_virtual_account') ?? false;
+        return auth()->user()?->can('update_virtual::account') ?? false;
+    }
+
+    protected static function canToggleActive(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'bendahara']) ?? false;
     }
 }

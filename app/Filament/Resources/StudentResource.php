@@ -47,6 +47,8 @@ class StudentResource extends Resource
             || $user->hasRole('admin')
             || $user->isKepsek()
             || $user->isBendahara()
+            || $user->hasRole('auditor')
+            || $user->hasRole('operator')
         ) {
             return $query;
         }

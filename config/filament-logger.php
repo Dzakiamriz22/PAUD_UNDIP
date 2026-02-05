@@ -16,6 +16,9 @@ return [
         'exclude' => [
             //App\Filament\Resources\UserResource::class,
         ],
+        'except' => [
+            \App\Filament\Resources\FinancialReportResource::class,
+        ],
         'cluster' => null,
         'navigation_group' => 'Activities',
     ],

@@ -32,6 +32,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'super_admin',
             'admin',
             'operator',
+            'auditor',
 
             // PAUD
             'guru',
