@@ -360,6 +360,7 @@ class UserResource extends Resource implements HasShieldPermissions
                     ->extraModalFooterActions(
                         [
                             Tables\Actions\EditAction::make()
+                                ->hiddenLabel()
                                 ->url(fn(User $user, $livewire): string =>
                                 UserResource::getUrl('edit', [
                                     'record' => $user,
@@ -368,7 +369,9 @@ class UserResource extends Resource implements HasShieldPermissions
                                     'tableFilters' => $livewire->tableFilters,
                                     'tableSearch' => $livewire->tableSearch
                                 ]))
-                                ->visible(fn(User $user): bool => !$user->trashed()),
+                                ->visible(fn(User $user): bool =>
+                                    static::isAdminOrSuperAdmin() && ! $user->trashed()
+                                ),
                             Tables\Actions\DeleteAction::make()
                                 ->cancelParentActions()
                                 ->deselectRecordsAfterCompletion(),
@@ -395,7 +398,9 @@ class UserResource extends Resource implements HasShieldPermissions
                         'tableFilters' => $livewire->tableFilters,
                         'tableSearch' => $livewire->tableSearch
                     ]))
-                    ->hidden(fn(User $user): bool => $user->trashed()),
+                    ->visible(fn(User $user): bool =>
+                        static::isAdminOrSuperAdmin() && ! $user->trashed()
+                    ),
                 Impersonate::make()->color('warning'),
                 Tables\Actions\ForceDeleteAction::make()->hiddenLabel(),
                 Tables\Actions\RestoreAction::make()->color('success')->hiddenLabel()
@@ -409,14 +414,12 @@ class UserResource extends Resource implements HasShieldPermissions
                         ->visible(fn($livewire): bool => $livewire->activeTab === 'trashed'),
                     Tables\Actions\ForceDeleteBulkAction::make()
                         ->visible(fn($livewire): bool => $livewire->activeTab === 'trashed'),
-                ]),
+                ])
+                        ->visible(fn (): bool => static::isAdminOrSuperAdmin()),
             ])
             ->checkIfRecordIsSelectableUsing(
-                function (User $record): bool {
-                    /** @var \App\Models\User $user */
-                    $user = Auth::user();
-                    return $record->id !== $user->id;
-                }
+                fn (User $record): bool =>
+                    static::isAdminOrSuperAdmin() && $record->id !== Auth::id()
             )
             ->recordUrl(null);
     }
@@ -564,26 +567,34 @@ class UserResource extends Resource implements HasShieldPermissions
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->can('view_any_teacher') ?? false;
+        return auth()->user()?->can('view_any_user') ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->can('create_teacher') ?? false;
+        return auth()->user()?->can('create_user') ?? false;
     }
 
     public static function canView(Model $record): bool
     {
-        return auth()->user()?->can('view_teacher') ?? false;
+        return auth()->user()?->can('view_user') ?? false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()?->can('delete_teacher') ?? false;
+        return auth()->user()?->can('delete_user') ?? false;
     }
 
     public static function canUpdate(Model $record): bool
     {
-        return auth()->user()?->can('update_teacher') ?? false;
+        return auth()->user()?->can('update_user') ?? false;
     }
+    protected static function isAdminOrSuperAdmin(): bool
+    {
+        $user = Auth::user();
+
+        return $user
+            && ($user->hasRole('admin') || $user->hasRole(config('filament-shield.super_admin.name')));
+    }
+
 }
