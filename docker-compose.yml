@@ -30,8 +30,8 @@ services:
       - "8080:8080"
       - "5173:5173"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf   # Menyambungkan file konfigurasi Nginx
-      - .:/var/www/html   # Menyambungkan folder app ke dalam container
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - .:/var/www/html
     depends_on:
       - app
     networks:
@@ -43,10 +43,10 @@ services:
     restart: always
     profiles: ["prod"]
     ports:
-      - "8201:80" # 82 untuk nginx 01 untuk pengenal container
+      - "8201:80"
     volumes:
-      - ./nginx-prod.conf:/etc/nginx/conf.d/default.conf   # Menyambungkan file konfigurasi Nginx
-      - .:/var/www/html   # Menyambungkan folder app ke dalam container
+      - ./nginx-prod.conf:/etc/nginx/conf.d/default.conf
+      - .:/var/www/html
     depends_on:
       - app-prod
     networks:
@@ -69,8 +69,8 @@ services:
     container_name: mailpit-filament
     profiles: ["dev"]
     ports:
-      - "8025:8025"     # Web UI
-      - "11025:1025"     # SMTP
+      - "8025:8025"
+      - "11025:1025"
     networks:
       - app-bridge
 
@@ -79,7 +79,7 @@ services:
     container_name: adminer-filament
     restart: always
     ports:
-      - 8008:8080 # 88 untuk adminer 01 untuk pengenal container
+      - 8008:8080
     networks:
       - app-bridge
 
