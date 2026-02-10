@@ -12,9 +12,11 @@ class VirtualAccountSeeder extends Seeder
     {
         // Create a single shared virtual account used for all payment types.
         $incomeTypes = IncomeType::all();
+        $defaultIncomeTypeId = $incomeTypes->first()?->id;
 
         if (VirtualAccount::count() === 0) {
             $va = VirtualAccount::create([
+                'income_type_id' => $defaultIncomeTypeId,
                 'bank_name' => 'BNI',
                 'va_number' => '98888' . rand(100000000, 999999999),
                 'is_active' => true,
