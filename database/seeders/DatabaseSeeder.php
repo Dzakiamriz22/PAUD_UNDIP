@@ -10,6 +10,11 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             RolesAndPermissionsSeeder::class,
+            GuruPermissionsSeeder::class,
+            AdminPermissionsSeeder::class,
+            BendaharaPermissionsSeeder::class,
+            KepsekPermissionsSeeder::class,
+            AuditorPermissionsSeeder::class,
             SuperadminSeeder::class,
             SchoolSeeder::class,
             AcademicYearSeeder::class,
@@ -17,10 +22,12 @@ class DatabaseSeeder extends Seeder
             StudentSeeder::class,
             StudentClassHistorySeeder::class,
             UserSeeder::class,
+            TeacherSeeder::class,
             IncomeTypeSeeder::class,
             TariffSeeder::class,
             VirtualAccountSeeder::class,
             AuditorRoleSeeder::class,
+            VerifyAllUsersSeeder::class,
         ]);
     }
 }

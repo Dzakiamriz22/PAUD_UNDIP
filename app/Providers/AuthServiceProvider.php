@@ -25,7 +25,15 @@ class AuthServiceProvider extends ServiceProvider
         \TomatoPHP\FilamentMediaManager\Models\Media::class => \App\Policies\MediaPolicy::class,
         \TomatoPHP\FilamentMediaManager\Models\Folder::class => \App\Policies\FolderPolicy::class,
         \Rupadana\ApiService\Models\Token::class => \App\Policies\TokenPolicy::class,
-      
+        \App\Models\AcademicYear::class => \App\Policies\AcademicYearPolicy::class,
+        \App\Models\Student::class => \App\Policies\StudentPolicy::class,
+        \App\Models\SchoolClass::class => \App\Policies\SchoolClassPolicy::class,
+        \App\Models\StudentClassHistory::class => \App\Policies\StudentClassHistoryPolicy::class,
+        \App\Models\Invoice::class => \App\Policies\InvoicePolicy::class,
+        \App\Models\Receipt::class => \App\Policies\ReceiptPolicy::class,
+        \App\Models\Tariff::class => \App\Policies\TariffPolicy::class,
+        \App\Models\VirtualAccount::class => \App\Policies\VirtualAccountPolicy::class,
+        \App\Models\School::class => \App\Policies\SchoolPolicy::class,
     ];
 
     /**
