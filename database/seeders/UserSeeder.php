@@ -49,6 +49,14 @@ class UserSeeder extends Seeder
             lastname: 'Sekolah',
             role: 'kepala_sekolah'
         );
+
+        $this->createUser(
+            username: 'auditor',
+            email: 'auditor@paud.test',
+            firstname: 'Auditor',
+            lastname: 'PAUD',
+            role: 'auditor'
+        );
     }
 
     private function createUser(
@@ -69,6 +77,7 @@ class UserSeeder extends Seeder
                 'firstname' => $firstname,
                 'lastname'  => $lastname,
                 'password'  => Hash::make('password'),
+                'email_verified_at' => now(),
             ]);
         }
 
