@@ -10,10 +10,34 @@ class AcademicYearSeeder extends Seeder
 {
     public function run(): void
     {
-        // GANJIL (AKTIF)
+        // 2024/2025 - GANJIL (NONAKTIF)
         AcademicYear::firstOrCreate(
             [
                 'year' => '2024/2025',
+                'semester' => 'ganjil',
+            ],
+            [
+                'id' => (string) Str::uuid(),
+                'is_active' => false,
+            ]
+        );
+
+        // 2024/2025 - GENAP (NONAKTIF)
+        AcademicYear::firstOrCreate(
+            [
+                'year' => '2024/2025',
+                'semester' => 'genap',
+            ],
+            [
+                'id' => (string) Str::uuid(),
+                'is_active' => false,
+            ]
+        );
+
+        // 2025/2026 - GANJIL (AKTIF)
+        AcademicYear::firstOrCreate(
+            [
+                'year' => '2025/2026',
                 'semester' => 'ganjil',
             ],
             [
@@ -22,10 +46,10 @@ class AcademicYearSeeder extends Seeder
             ]
         );
 
-        // GENAP (NONAKTIF)
+        // 2025/2026 - GENAP (NONAKTIF)
         AcademicYear::firstOrCreate(
             [
-                'year' => '2024/2025',
+                'year' => '2025/2026',
                 'semester' => 'genap',
             ],
             [

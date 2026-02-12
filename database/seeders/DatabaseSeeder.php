@@ -28,6 +28,8 @@ class DatabaseSeeder extends Seeder
             VirtualAccountSeeder::class,
             AuditorRoleSeeder::class,
             VerifyAllUsersSeeder::class,
+            InvoiceSeeder::class,
+            ReceiptSeeder::class,
         ]);
     }
 }
