@@ -7,6 +7,8 @@ use App\Models\Invoice;
 use App\Models\Receipt;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Response;
 
 class ListFinancialReports extends ListRecords
 {
@@ -17,6 +19,9 @@ class ListFinancialReports extends ListRecords
     public $totalPaid = 0;
     public $totalOutstanding = 0;
     public $totalDiscounts = 0;
+    public $averageTransactionValue = 0;
+    public $transactionCount = 0;
+    public $collectionRate = 0; // Percentage of invoiced amount that has been paid
 
     // Filter properties
     public $granularity = 'monthly'; // monthly|yearly
@@ -26,10 +31,12 @@ class ListFinancialReports extends ListRecords
     // Computed report rows (aggregated)
     public $reportRows = [];
     public $incomeSources = [];
+    public $collectionByClass = []; // collection summary by class
     public $currentPeriodTotal = 0;
     public $previousPeriodTotal = 0;
     public $periodChangePercent = 0;
     public $sparkline = []; // array of numbers for last 6 periods
+    public $monthlyComparison = []; // Compare current year months
 
     public function mount(): void
     {
@@ -42,6 +49,15 @@ class ListFinancialReports extends ListRecords
         $this->totalDiscounts = (float) Invoice::sum('discount_amount');
         $this->totalPaid = (float) Receipt::sum('amount_paid');
         $this->totalOutstanding = max(0, $this->totalInvoiced - $this->totalPaid);
+        
+        // Calculate additional metrics
+        $this->transactionCount = Receipt::count();
+        $this->averageTransactionValue = $this->transactionCount > 0 
+            ? $this->totalPaid / $this->transactionCount 
+            : 0;
+        $this->collectionRate = $this->totalInvoiced > 0 
+            ? ($this->totalPaid / $this->totalInvoiced) * 100 
+            : 0;
 
         $this->applyFilters();
     }
@@ -163,5 +179,218 @@ class ListFinancialReports extends ListRecords
             })->toArray();
 
         $this->incomeSources = $sources;
+        
+        // Get collection summary by class
+        $classQuery = DB::table('receipts')
+            ->join('invoices', 'receipts.invoice_id', '=', 'invoices.id')
+            ->join('students', 'invoices.student_id', '=', 'students.id')
+            ->join('student_class_histories', 'students.id', '=', 'student_class_histories.student_id')
+            ->join('classes', 'student_class_histories.class_id', '=', 'classes.id');
+        
+        if ($this->granularity === 'monthly') {
+            $classQuery->whereYear('receipts.payment_date', $this->year);
+            if (! empty($this->month)) {
+                $classQuery->whereMonth('receipts.payment_date', $this->month);
+            }
+        } else {
+            if (! empty($this->year)) {
+                $classQuery->whereYear('receipts.payment_date', $this->year);
+            }
+        }
+        
+        // Get invoiced amount per class
+        $invoiceQuery = DB::table('invoices')
+            ->join('students', 'invoices.student_id', '=', 'students.id')
+            ->join('student_class_histories', 'students.id', '=', 'student_class_histories.student_id')
+            ->join('classes', 'student_class_histories.class_id', '=', 'classes.id');
+        
+        if ($this->granularity === 'monthly') {
+            $invoiceQuery->whereYear('invoices.created_at', $this->year);
+            if (! empty($this->month)) {
+                $invoiceQuery->whereMonth('invoices.created_at', $this->month);
+            }
+        } else {
+            if (! empty($this->year)) {
+                $invoiceQuery->whereYear('invoices.created_at', $this->year);
+            }
+        }
+        
+        $collectionData = $classQuery
+            ->selectRaw('classes.code, SUM(receipts.amount_paid) as total_paid, COUNT(DISTINCT invoices.id) as invoice_count')
+            ->groupBy('classes.id', 'classes.code')
+            ->get()
+            ->keyBy('code')
+            ->toArray();
+        
+        $invoiceData = $invoiceQuery
+            ->selectRaw('classes.code, SUM(invoices.total_amount) as total_invoiced, COUNT(DISTINCT students.id) as student_count')
+            ->groupBy('classes.id', 'classes.code')
+            ->get()
+            ->keyBy('code')
+            ->toArray();
+        
+        $this->collectionByClass = [];
+        foreach ($invoiceData as $classCode => $data) {
+            $totalInvoiced = (float) $data->total_invoiced;
+            $totalPaid = isset($collectionData[$classCode]) ? (float) $collectionData[$classCode]->total_paid : 0;
+            $collectionRate = $totalInvoiced > 0 ? ($totalPaid / $totalInvoiced) * 100 : 0;
+            
+            $this->collectionByClass[] = [
+                'class_name' => $classCode,
+                'student_count' => (int) $data->student_count,
+                'total_invoiced' => $totalInvoiced,
+                'total_paid' => $totalPaid,
+                'outstanding' => max(0, $totalInvoiced - $totalPaid),
+                'collection_rate' => (float) $collectionRate,
+            ];
+        }
+        
+        // Sort by class name
+        usort($this->collectionByClass, function($a, $b) {
+            return strcmp($a['class_name'], $b['class_name']);
+        });
+        
+        // Monthly comparison for current year
+        if ($this->granularity === 'monthly') {
+            $this->monthlyComparison = [];
+            for ($m = 1; $m <= 12; $m++) {
+                $total = DB::table('receipts')
+                    ->whereYear('payment_date', $this->year)
+                    ->whereMonth('payment_date', $m)
+                    ->sum('amount_paid');
+                $this->monthlyComparison[] = [
+                    'month' => $m,
+                    'month_name' => \DateTime::createFromFormat('!m', $m)->format('M'),
+                    'total' => (float) $total,
+                ];
+            }
+        }
+    }
+    
+    public function exportPdf()
+    {
+        $data = [
+            'totalInvoiced' => $this->totalInvoiced,
+            'totalPaid' => $this->totalPaid,
+            'totalOutstanding' => $this->totalOutstanding,
+            'totalDiscounts' => $this->totalDiscounts,
+            'averageTransactionValue' => $this->averageTransactionValue,
+            'transactionCount' => $this->transactionCount,
+            'collectionRate' => $this->collectionRate,
+            'currentPeriodTotal' => $this->currentPeriodTotal,
+            'previousPeriodTotal' => $this->previousPeriodTotal,
+            'periodChangePercent' => $this->periodChangePercent,
+            'reportRows' => $this->reportRows,
+            'incomeSources' => $this->incomeSources,
+            'collectionByClass' => $this->collectionByClass,
+            'granularity' => $this->granularity,
+            'month' => $this->month,
+            'year' => $this->year,
+            'generatedAt' => now(),
+        ];
+        
+        $pdf = Pdf::loadView('pdf.financial-report', $data)
+            ->setPaper('A4', 'landscape');
+            
+        $filename = 'laporan-keuangan-' . $this->year;
+        if ($this->granularity === 'monthly' && $this->month) {
+            $filename .= '-' . str_pad($this->month, 2, '0', STR_PAD_LEFT);
+        }
+        $filename .= '.pdf';
+        
+        return response()->streamDownload(function() use ($pdf) {
+            echo $pdf->output();
+        }, $filename);
+    }
+    
+    public function exportExcel()
+    {
+        $filename = 'laporan-keuangan-' . $this->year;
+        if ($this->granularity === 'monthly' && $this->month) {
+            $filename .= '-' . str_pad($this->month, 2, '0', STR_PAD_LEFT);
+        }
+        $filename .= '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+        
+        $callback = function() {
+            $file = fopen('php://output', 'w');
+            
+            // BOM for UTF-8
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+            
+            // Summary Section
+            fputcsv($file, ['LAPORAN KEUANGAN PAUD UNDIP']);
+            fputcsv($file, ['Periode', $this->granularity === 'monthly' ? 'Bulanan' : 'Tahunan']);
+            fputcsv($file, ['Tahun', $this->year]);
+            if ($this->granularity === 'monthly' && $this->month) {
+                fputcsv($file, ['Bulan', \DateTime::createFromFormat('!m', $this->month)->format('F')]);
+            }
+            fputcsv($file, []);
+            
+            // Metrics
+            fputcsv($file, ['RINGKASAN KEUANGAN']);
+            fputcsv($file, ['Total Tagihan', 'Rp ' . number_format($this->totalInvoiced, 0, ',', '.')]);
+            fputcsv($file, ['Total Pembayaran', 'Rp ' . number_format($this->totalPaid, 0, ',', '.')]);
+            fputcsv($file, ['Total Outstanding', 'Rp ' . number_format($this->totalOutstanding, 0, ',', '.')]);
+            fputcsv($file, ['Total Diskon', 'Rp ' . number_format($this->totalDiscounts, 0, ',', '.')]);
+            fputcsv($file, ['Rata-rata Transaksi', 'Rp ' . number_format($this->averageTransactionValue, 0, ',', '.')]);
+            fputcsv($file, ['Jumlah Transaksi', number_format($this->transactionCount, 0, ',', '.')]);
+            fputcsv($file, ['Tingkat Koleksi', number_format($this->collectionRate, 2) . '%']);
+            fputcsv($file, []);
+            
+            // Report Rows
+            fputcsv($file, ['LAPORAN AGREGAT']);
+            fputcsv($file, ['Periode', 'Jumlah Transaksi', 'Total Pembayaran']);
+            foreach ($this->reportRows as $row) {
+                $period = $row['month'] 
+                    ? \DateTime::createFromFormat('!m', $row['month'])->format('F') . ' ' . $row['year']
+                    : $row['year'];
+                fputcsv($file, [
+                    $period,
+                    $row['count'],
+                    'Rp ' . number_format($row['total_amount'], 0, ',', '.')
+                ]);
+            }
+            fputcsv($file, []);
+            
+            // Income Sources
+            fputcsv($file, ['SUMBER PEMASUKAN']);
+            fputcsv($file, ['Sumber', 'Jumlah Item', 'Total', 'Persentase']);
+            $grand = array_sum(array_column($this->incomeSources, 'total_amount') ?: [0]);
+            foreach ($this->incomeSources as $source) {
+                $pct = $grand > 0 ? ($source['total_amount'] / $grand) * 100 : 0;
+                fputcsv($file, [
+                    $source['income_type'],
+                    $source['items_count'],
+                    'Rp ' . number_format($source['total_amount'], 0, ',', '.'),
+                    number_format($pct, 2) . '%'
+                ]);
+            }
+            fputcsv($file, []);
+            
+            // Collection by Class
+            if (!empty($this->collectionByClass)) {
+                fputcsv($file, ['RINGKASAN KOLEKSI PER KELAS']);
+                fputcsv($file, ['Kelas', 'Jumlah Siswa', 'Total Tagihan', 'Pembayaran', 'Tunggakan', 'Tingkat Koleksi']);
+                foreach ($this->collectionByClass as $class) {
+                    fputcsv($file, [
+                        $class['class_name'],
+                        $class['student_count'],
+                        'Rp ' . number_format($class['total_invoiced'], 0, ',', '.'),
+                        'Rp ' . number_format($class['total_paid'], 0, ',', '.'),
+                        'Rp ' . number_format($class['outstanding'], 0, ',', '.'),
+                        number_format($class['collection_rate'], 2) . '%'
+                    ]);
+                }
+            }
+            
+            fclose($file);
+        };
+        
+        return Response::stream($callback, 200, $headers);
     }
 }

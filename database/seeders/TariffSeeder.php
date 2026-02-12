@@ -57,12 +57,9 @@ class TariffSeeder extends Seeder
             ['SPP Siswa Lama', 'TPA_KB',   'monthly', 360000],
 
             // 6️⃣ SPP HARIAN (daily)
-            ['SPP Harian', 'TK',       'daily', 450000],
-            ['SPP Harian', 'KB',       'daily', 350000],
-            ['SPP Harian', 'TPA_PAUD', 'daily', 900000],
-            ['SPP Harian', 'TPA_SD',   'daily', 700000],
-            ['SPP Harian', 'TPA_TK',   'daily', 1250000],
-            ['SPP Harian', 'TPA_KB',   'daily', 1150000],
+            ['SPP Harian', 'TPA_SD',   'daily', 75000],
+            ['SPP Harian', 'TPA_TK',   'daily', 75000],
+            ['SPP Harian', 'TPA_KB',   'daily', 75000],
 
             // 7️⃣ DENDA KETERLAMBATAN (penalty)
             ['Denda Keterlambatan', 'TPA_SD', 'penalty', 20000],

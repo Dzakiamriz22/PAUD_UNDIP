@@ -1,222 +1,401 @@
 @php
     /**
-     * Variables provided by Page class:
-     * - $totalInvoiced
-     * - $totalPaid
-     * - $totalOutstanding
-     * - $totalDiscounts
-     * - $recentInvoices
+     * Financial Report Page - PAUD UNDIP
+     * Sistem Pembayaran: Virtual Account BNI
+     *  
+     * Variables: $totalInvoiced, $totalPaid, $totalOutstanding, $totalDiscounts,
+     * $averageTransactionValue, $transactionCount, $collectionRate,
+     * $reportRows, $incomeSources, $topPayers, $sparkline
      */
 @endphp
 
 <div class="filament-page">
-    <div class="space-y-6">
+    <div class="space-y-5">
 
-        <!-- ================= FILTER TOOLBAR ================= -->
-        <div class="bg-white dark:bg-gray-900 shadow rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-            <div class="flex flex-col md:flex-row md:items-end md:space-x-4 gap-3">
+        <!-- Header -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-5 border border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between mb-3">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Laporan Keuangan</h1>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">PAUD UNDIP • Sistem Pembayaran Virtual Account BNI</p>
+                </div>
+                <div class="flex items-center gap-3 text-xs">
+                    <span class="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md font-medium">
+                        Metode: VA BNI
+                    </span>
+                    <span class="text-gray-500 dark:text-gray-400">
+                        {{ now()->format('d M Y, H:i') }}
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Info Box - Penjelasan Laporan -->
+            <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div class="flex items-start gap-2">
+                    <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>
+                    <div class="text-xs text-blue-900 dark:text-blue-200">
+                        <p class="font-semibold mb-1">Tentang Laporan Ini:</p>
+                        <ul class="space-y-0.5 list-disc list-inside">
+                            <li><strong>Pembayaran</strong> = jumlah yang sudah diterima dan tercatat dalam sistem</li>
+                            <li><strong>Total Tagihan</strong> = jumlah semua invoice yang diterbitkan</li>
+                            <li><strong>Tunggakan</strong> = tagihan yang belum dibayar</li>
+                            <li><strong>Tingkat Koleksi</strong> = persentase tagihan yang sudah terbayar</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                <div class="flex-1">
-                    <label class="block text-xs text-gray-600 dark:text-gray-400">
-                        Periode
-                    </label>
-
-                    <div class="flex gap-2 mt-1">
-                        <select wire:model="granularity"
-                            class="border border-gray-300 dark:border-gray-700 rounded px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+        <!-- Filter -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+            <div class="flex items-start justify-between mb-3">
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Filter Periode</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Pilih periode untuk melihat laporan keuangan</p>
+                </div>
+            </div>
+            <div class="flex flex-col md:flex-row md:items-end gap-3">
+                <div class="flex-1 grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                            Periode
+                            <span class="text-gray-400 dark:text-gray-500" title="Pilih tampilan bulanan atau tahunan">ⓘ</span>
+                        </label>
+                        <select wire:model="granularity" class="w-full border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
                             <option value="monthly">Bulanan</option>
                             <option value="yearly">Tahunan</option>
                         </select>
-
-                        <select wire:model="month"
-                            class="border border-gray-300 dark:border-gray-700 rounded px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                            @if($granularity === 'yearly') disabled @endif>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                            Bulan
+                            <span class="text-gray-400 dark:text-gray-500" title="Aktif hanya untuk periode bulanan">ⓘ</span>
+                        </label>
+                        <select wire:model="month" class="w-full border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 {{ $granularity === 'yearly' ? 'opacity-50' : '' }}" @if($granularity === 'yearly') disabled @endif>
                             @foreach(range(1,12) as $m)
-                                <option value="{{ $m }}">
-                                    {{ DateTime::createFromFormat('!m', $m)->format('F') }}
-                                </option>
+                                <option value="{{ $m }}">{{ \DateTime::createFromFormat('!m', $m)->format('F') }}</option>
                             @endforeach
                         </select>
-
-                        <input type="number" wire:model="year"
-                            class="w-28 border border-gray-300 dark:border-gray-700 rounded px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                            Tahun
+                            <span class="text-gray-400 dark:text-gray-500" title="Tahun laporan">ⓘ</span>
+                        </label>
+                        <input type="number" wire:model="year" min="2020" max="2030" class="w-full border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" />
                     </div>
                 </div>
-
-                <div class="flex items-center space-x-2">
-                    <button wire:click="applyFilters"
-                        class="px-4 py-2 bg-primary-600 text-white rounded">
-                        Terapkan
-                    </button>
-
-                    <button wire:click="$refresh"
-                        class="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded text-gray-700 dark:text-gray-300">
-                        Reset
-                    </button>
+                <div class="flex gap-2">
+                    <button wire:click="applyFilters" class="px-4 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-sm rounded-md font-medium transition">Terapkan</button>
+                    <button wire:click="$refresh" class="px-4 py-1.5 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-md font-medium transition">Reset</button>
                 </div>
-
             </div>
         </div>
 
-        <!-- ================= METRIC CARDS ================= -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
-            <div class="p-4 bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-                <div class="text-xs text-gray-500 dark:text-gray-400">
-                    Total Pembayaran (Periode)
-                </div>
-                <div class="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                    Rp {{ number_format($currentPeriodTotal, 0, ',', '.') }}
-                </div>
-
-                <div class="flex items-center justify-between mt-4">
-                    <div class="text-sm {{ $periodChangePercent >= 0 ? 'text-green-600' : 'text-red-600' }} font-medium">
-                        {!! $periodChangePercent >= 0 ? '&uarr;' : '&darr;' !!}
-                        {{ abs($periodChangePercent) }}%
+        <!-- Metrics -->
+        <div class="grid grid-cols-4 gap-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+                <div class="flex items-start justify-between mb-2">
+                    <div class="flex items-center gap-1">
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Pembayaran</p>
+                        <span class="group relative">
+                            <svg class="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                            </svg>
+                            <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
+                                Total pembayaran yang sudah diterima dalam periode ini melalui VA BNI
+                            </span>
+                        </span>
                     </div>
+                    <div class="p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded">
+                        <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/></svg>
+                    </div>
+                </div>
+                <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($currentPeriodTotal, 0, ',', '.') }}</p>
+                <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs">
+                    <span class="font-medium {{ $periodChangePercent >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $periodChangePercent >= 0 ? '↗' : '↘' }} {{ number_format(abs($periodChangePercent), 1) }}%</span>
+                    <span class="text-gray-500 dark:text-gray-400 ml-1">vs periode lalu</span>
+                </div>
+            </div>
 
-                    <div class="w-28">
-                        @php
-                            $vals = $sparkline;
-                            $max = max($vals) ?: 1;
-                            $points = collect($vals)->map(function($v, $i) use ($max, $vals) {
-                                $x = ($i / (count($vals)-1)) * 100;
-                                $y = 100 - (($v / $max) * 100);
-                                return "$x,$y";
-                            })->implode(' ');
-                        @endphp
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+                <div class="flex items-start justify-between mb-2">
+                    <div class="flex items-center gap-1">
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total Tagihan</p>
+                        <span class="group relative">
+                            <svg class="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                            </svg>
+                            <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
+                                Jumlah seluruh invoice yang diterbitkan. Tingkat koleksi menunjukkan persentase yang sudah terbayar
+                            </span>
+                        </span>
+                    </div>
+                    <div class="p-1.5 bg-purple-50 dark:bg-purple-900/20 rounded">
+                        <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                    </div>
+                </div>
+                <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($totalInvoiced, 0, ',', '.') }}</p>
+                <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs">
+                    <span class="text-gray-500 dark:text-gray-400">Koleksi:</span>
+                    <span class="font-semibold text-gray-900 dark:text-gray-100 ml-1">{{ number_format($collectionRate, 1) }}%</span>
+                </div>
+            </div>
 
-                        <svg class="w-full h-6" viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <polyline fill="none" stroke="#3b82f6" stroke-width="2" points="{{ $points }}" />
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+                <div class="flex items-start justify-between mb-2">
+                    <div class="flex items-center gap-1">
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Tunggakan</p>
+                        <span class="group relative">
+                            <svg class="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                            </svg>
+                            <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
+                                Invoice yang sudah diterbitkan tetapi belum dibayar oleh siswa/orang tua
+                            </span>
+                        </span>
+                    </div>
+                    <div class="p-1.5 bg-red-50 dark:bg-red-900/20 rounded">
+                        <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                    </div>
+                </div>
+                <p class="text-2xl font-bold text-red-600 dark:text-red-400">Rp {{ number_format($totalOutstanding, 0, ',', '.') }}</p>
+                <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+                    @php $outstandingPercent = $totalInvoiced > 0 ? ($totalOutstanding / $totalInvoiced) * 100 : 0; @endphp
+                    {{ number_format($outstandingPercent, 1) }}% dari total
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+                <div class="flex items-start justify-between mb-2">
+                    <div class="flex items-center gap-1">
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Diskon</p>
+                        <span class="group relative">
+                            <svg class="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                            </svg>
+                            <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
+                                Potongan harga yang diberikan kepada siswa (misal: diskon alumni, diskon anak kembar, dll)
+                            </span>
+                        </span>
+                    </div>
+                    <div class="p-1.5 bg-green-50 dark:bg-green-900/20 rounded">
+                        <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    </div>
+                </div>
+                <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($totalDiscounts, 0, ',', '.') }}</p>
+                <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+                    Potongan harga
+                </div>
+            </div>
+        </div>
+
+        <!-- Secondary Metrics -->
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 border border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-1 mb-1">
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Rata-rata Transaksi</p>
+                    <span class="group relative">
+                        <svg class="w-3 h-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                         </svg>
-                    </div>
+                        <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-40 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
+                            Nilai rata-rata per transaksi pembayaran
+                        </span>
+                    </span>
                 </div>
+                <p class="text-lg font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($averageTransactionValue, 0, ',', '.') }}</p>
             </div>
-
-            <div class="p-4 bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-                <div class="text-xs text-gray-500 dark:text-gray-400">Total Tagihan</div>
-                <div class="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    Rp {{ number_format($totalInvoiced, 0, ',', '.') }}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 border border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-1 mb-1">
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Transaksi</p>
+                    <span class="group relative">
+                        <svg class="w-3 h-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                        <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-40 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
+                            Jumlah transaksi pembayaran yang tercatat
+                        </span>
+                    </span>
                 </div>
+                <p class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ number_format($transactionCount, 0, ',', '.') }} transaksi</p>
             </div>
-
-            <div class="p-4 bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-                <div class="text-xs text-gray-500 dark:text-gray-400">Total Outstanding</div>
-                <div class="mt-2 text-xl font-semibold text-red-600">
-                    Rp {{ number_format($totalOutstanding, 0, ',', '.') }}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 border border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-1 mb-1">
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Periode Sebelumnya</p>
+                    <span class="group relative">
+                        <svg class="w-3 h-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                        <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-40 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
+                            Pembayaran periode sebelumnya untuk perbandingan
+                        </span>
+                    </span>
                 </div>
+                <p class="text-lg font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($previousPeriodTotal, 0, ',', '.') }}</p>
             </div>
-
-            <div class="p-4 bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-                <div class="text-xs text-gray-500 dark:text-gray-400">Total Diskon</div>
-                <div class="mt-2 text-xl font-semibold text-indigo-600">
-                    Rp {{ number_format($totalDiscounts, 0, ',', '.') }}
-                </div>
-            </div>
-
         </div>
 
-        <!-- ================= LAPORAN AGREGAT ================= -->
-        <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                Laporan Agregat
-            </h3>
+        <!-- Reports & Income Sources -->
+        <div class="grid grid-cols-2 gap-5">
+            <!-- Laporan Agregat -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase">Laporan Agregat</h3>
+                </div>
+                <div class="p-4">
+                    <table class="w-full text-sm">
+                        <thead class="text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                            <tr>
+                                <th class="py-2 text-left font-medium">Periode</th>
+                                <th class="py-2 text-center font-medium">Transaksi</th>
+                                <th class="py-2 text-right font-medium">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                            @forelse($reportRows as $r)
+                                <tr>
+                                    <td class="py-2 text-gray-900 dark:text-gray-100">
+                                        @if($r['month'])
+                                            {{ \DateTime::createFromFormat('!m', $r['month'])->format('M') }} {{ $r['year'] }}
+                                        @else
+                                            {{ $r['year'] }}
+                                        @endif
+                                    </td>
+                                    <td class="py-2 text-center text-gray-700 dark:text-gray-300">{{ $r['count'] }}</td>
+                                    <td class="py-2 text-right font-semibold text-gray-900 dark:text-gray-100">
+                                        Rp {{ number_format($r['total_amount'], 0, ',', '.') }}
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="3" class="py-4 text-center text-gray-500 dark:text-gray-400">Tidak ada data</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-            <div class="mt-4 overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="text-xs uppercase text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+            <!-- Sumber Pemasukan -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase">Sumber Pemasukan</h3>
+                </div>
+                <div class="p-4">
+                    <table class="w-full text-sm">
+                        <thead class="text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                            <tr>
+                                <th class="py-2 text-left font-medium">Sumber</th>
+                                <th class="py-2 text-center font-medium">Item</th>
+                                <th class="py-2 text-right font-medium">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                            @php $grand = array_sum(array_column($incomeSources, 'total_amount') ?: [0]); @endphp
+                            @forelse($incomeSources as $s)
+                                @php $pct = $grand > 0 ? ($s['total_amount'] / $grand) * 100 : 0; @endphp
+                                <tr>
+                                    <td class="py-2">
+                                        <div class="text-gray-900 dark:text-gray-100 font-medium">{{ $s['income_type'] }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ number_format($pct, 1) }}%</div>
+                                    </td>
+                                    <td class="py-2 text-center text-gray-700 dark:text-gray-300">{{ $s['items_count'] }}</td>
+                                    <td class="py-2 text-right font-semibold text-gray-900 dark:text-gray-100">
+                                        Rp {{ number_format($s['total_amount'], 0, ',', '.') }}
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="3" class="py-4 text-center text-gray-500 dark:text-gray-400">Tidak ada data</td></tr>
+                            @endforelse
+                            @if(count($incomeSources) > 0)
+                                <tr class="font-bold bg-gray-50 dark:bg-gray-900">
+                                    <td class="py-2 text-gray-900 dark:text-gray-100">TOTAL</td>
+                                    <td class="py-2 text-center text-gray-900 dark:text-gray-100">{{ array_sum(array_column($incomeSources, 'items_count')) }}</td>
+                                    <td class="py-2 text-right text-gray-900 dark:text-gray-100">Rp {{ number_format($grand, 0, ',', '.') }}</td>
+                                </tr>
+                            @endif
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Collection by Class -->
+        @if(!empty($collectionByClass))
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase">Ringkasan Koleksi per Kelas</h3>
+            </div>
+            <div class="p-4">
+                <table class="w-full text-sm">
+                    <thead class="text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                         <tr>
-                            <th class="px-3 py-2">Periode</th>
-                            <th class="px-3 py-2">Jumlah Transaksi</th>
-                            <th class="px-3 py-2">Total Pembayaran</th>
+                            <th class="py-2 text-left font-medium">Kelas</th>
+                            <th class="py-2 text-center font-medium">Siswa</th>
+                            <th class="py-2 text-right font-medium">Total Tagihan</th>
+                            <th class="py-2 text-right font-medium">Pembayaran</th>
+                            <th class="py-2 text-right font-medium">Tunggakan</th>
+                            <th class="py-2 text-center font-medium">Tingkat Koleksi</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                        @forelse($reportRows as $r)
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                        @foreach($collectionByClass as $class)
                             <tr>
-                                <td class="px-3 py-2 text-gray-800 dark:text-gray-200">
-                                    @if($r['month'])
-                                        {{ DateTime::createFromFormat('!m', $r['month'])->format('F') }} {{ $r['year'] }}
-                                    @else
-                                        {{ $r['year'] }}
-                                    @endif
+                                <td class="py-2 text-gray-900 dark:text-gray-100 font-medium">{{ $class['class_name'] }}</td>
+                                <td class="py-2 text-center text-gray-700 dark:text-gray-300">{{ $class['student_count'] }}</td>
+                                <td class="py-2 text-right text-gray-900 dark:text-gray-100">
+                                    Rp {{ number_format($class['total_invoiced'], 0, ',', '.') }}
                                 </td>
-                                <td class="px-3 py-2 text-gray-800 dark:text-gray-200">
-                                    {{ $r['count'] }}
+                                <td class="py-2 text-right text-green-600 dark:text-green-400 font-semibold">
+                                    Rp {{ number_format($class['total_paid'], 0, ',', '.') }}
                                 </td>
-                                <td class="px-3 py-2 text-gray-800 dark:text-gray-200">
-                                    Rp {{ number_format($r['total_amount'], 0, ',', '.') }}
+                                <td class="py-2 text-right text-red-600 dark:text-red-400">
+                                    Rp {{ number_format($class['outstanding'], 0, ',', '.') }}
+                                </td>
+                                <td class="py-2 text-center">
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold
+                                        @switch(true)
+                                            @case($class['collection_rate'] >= 85)
+                                                bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300
+                                                @break
+                                            @case($class['collection_rate'] >= 70)
+                                                bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300
+                                                @break
+                                            @default
+                                                bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300
+                                        @endswitch
+                                    ">
+                                        {{ number_format($class['collection_rate'], 1) }}%
+                                    </span>
                                 </td>
                             </tr>
-                        @empty
-                            <tr>
-                                <td colspan="3" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">
-                                    Tidak ada data untuk filter ini.
-                                </td>
-                            </tr>
-                        @endforelse
+                        @endforeach
                     </tbody>
                 </table>
             </div>
         </div>
+        @endif
 
-        <!-- ================= SUMBER PEMASUKAN ================= -->
-        <div class="bg-white dark:bg-gray-900 rounded-lg shadow p-4 border border-gray-200 dark:border-gray-700">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                Sumber Pemasukan
-            </h3>
-
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Ringkasan berdasarkan jenis pendapatan (tidak termasuk diskon).
-            </p>
-
-            <div class="mt-4 overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead class="text-xs uppercase text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
-                        <tr>
-                            <th class="px-3 py-2">Sumber</th>
-                            <th class="px-3 py-2">Jumlah Item</th>
-                            <th class="px-3 py-2">Total (Rp)</th>
-                            <th class="px-3 py-2">% dari Pembayaran</th>
-                        </tr>
-                    </thead>
-
-                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                        @php $grand = array_sum(array_column($incomeSources, 'total_amount') ?: [0]); @endphp
-
-                        @forelse($incomeSources as $s)
-                            @php $pct = $grand > 0 ? ($s['total_amount'] / $grand) * 100 : 0; @endphp
-
-                            <tr>
-                                <td class="px-3 py-2 font-medium text-gray-800 dark:text-gray-200">
-                                    {{ $s['income_type'] }}
-                                </td>
-                                <td class="px-3 py-2 text-gray-800 dark:text-gray-200">
-                                    {{ $s['items_count'] }}
-                                </td>
-                                <td class="px-3 py-2 text-gray-800 dark:text-gray-200">
-                                    Rp {{ number_format($s['total_amount'], 0, ',', '.') }}
-                                </td>
-                                <td class="px-3 py-2 w-48">
-                                    <div class="bg-gray-100 dark:bg-gray-800 rounded-full h-3 w-full">
-                                        <div class="bg-primary-600 h-3 rounded-full"
-                                            style="width: {{ round($pct, 2) }}%">
-                                        </div>
-                                    </div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                        {{ number_format($pct, 2) }}%
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">
-                                    Tidak ada data sumber pemasukan untuk filter ini.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+        <!-- Actions -->
+        <div class="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+            <div class="text-sm text-gray-600 dark:text-gray-400">
+                <p class="font-medium text-gray-900 dark:text-gray-100">Export atau Cetak Laporan</p>
+                <p class="text-xs mt-0.5">Unduh laporan dalam format PDF atau Excel</p>
+            </div>
+            <div class="flex gap-2">
+                <button wire:click="exportPdf" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md font-medium transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
+                    PDF
+                </button>
+                <button wire:click="exportExcel" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md font-medium transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                    Excel
+                </button>
+                <button onclick="window.print()" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded-md font-medium transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd"/></svg>
+                    Print
+                </button>
             </div>
         </div>
 
