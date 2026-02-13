@@ -38,18 +38,41 @@ class ReceiptSeeder extends Seeder
         $totalReceipts = 0;
 
         foreach ($paidInvoices as $invoice) {
-            // Generate reference number for VA payment
-            $referenceNumber = 'BNI' . Carbon::parse($invoice->paid_at)->format('ymd') . str_pad(rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+            $methodRoll = rand(1, 100);
+            $paymentMethod = match (true) {
+                $methodRoll <= 60 => 'va',
+                $methodRoll <= 80 => 'bank_transfer',
+                $methodRoll <= 90 => 'qris',
+                default => 'cash',
+            };
+
+            $paymentDate = $invoice->paid_at ?? Carbon::parse($invoice->issued_at)->addDays(rand(1, 10));
+
+            $referenceNumber = null;
+            $note = 'Pembayaran diterima.';
+
+            if ($paymentMethod === 'va') {
+                $referenceNumber = $invoice->va_number ?: ('BNI' . $paymentDate->format('ymd') . rand(100000, 999999));
+                $note = "Pembayaran melalui Virtual Account {$invoice->va_bank} - {$invoice->va_number}";
+            } elseif ($paymentMethod === 'bank_transfer') {
+                $referenceNumber = 'TRF' . $paymentDate->format('ymd') . str_pad(rand(10000, 99999), 5, '0', STR_PAD_LEFT);
+                $note = 'Pembayaran melalui transfer bank.';
+            } elseif ($paymentMethod === 'qris') {
+                $referenceNumber = 'QRIS' . $paymentDate->format('ymd') . str_pad(rand(10000, 99999), 5, '0', STR_PAD_LEFT);
+                $note = 'Pembayaran melalui QRIS.';
+            } else {
+                $note = 'Pembayaran tunai di loket.';
+            }
 
             Receipt::create([
                 'invoice_id' => $invoice->id,
                 'amount_paid' => $invoice->total_amount,
-                'payment_method' => 'va',
+                'payment_method' => $paymentMethod,
                 'reference_number' => $referenceNumber,
-                'payment_date' => $invoice->paid_at,
-                'issued_at' => $invoice->paid_at,
+                'payment_date' => $paymentDate,
+                'issued_at' => $paymentDate,
                 'created_by' => $creator->id,
-                'note' => "Pembayaran melalui Virtual Account BNI - {$invoice->va_number}",
+                'note' => $note,
             ]);
 
             $totalReceipts++;
