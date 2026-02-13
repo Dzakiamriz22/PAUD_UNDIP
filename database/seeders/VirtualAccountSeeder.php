@@ -18,7 +18,7 @@ class VirtualAccountSeeder extends Seeder
             $va = VirtualAccount::create([
                 'income_type_id' => $defaultIncomeTypeId,
                 'bank_name' => 'BNI',
-                'va_number' => '98888' . rand(100000000, 999999999),
+                'va_number' => '1234567890',
                 'is_active' => true,
             ]);
 

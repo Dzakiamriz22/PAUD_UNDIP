@@ -38,6 +38,14 @@ class AdminPermissionsSeeder extends Seeder
             'update_academic_year' => 'Edit Tahun Ajaran',
         ];
 
+        $academicYearPermissionsShield = [
+            'view_academic::year' => 'Lihat Tahun Ajaran',
+            'view_any_academic::year' => 'Lihat Daftar Tahun Ajaran',
+            'create_academic::year' => 'Buat Tahun Ajaran Baru',
+            'update_academic::year' => 'Edit Tahun Ajaran',
+            'delete_academic::year' => 'Hapus Tahun Ajaran',
+        ];
+
         // Class - Full CRUD
         $classPermissions = [
             'view_school_class' => 'Lihat Kelas',
@@ -45,6 +53,14 @@ class AdminPermissionsSeeder extends Seeder
             'create_school_class' => 'Buat Kelas Baru',
             'update_school_class' => 'Edit Kelas',
             'delete_school_class' => 'Hapus Kelas',
+        ];
+
+        $classPermissionsShield = [
+            'view_school::class' => 'Lihat Kelas',
+            'view_any_school::class' => 'Lihat Daftar Kelas',
+            'create_school::class' => 'Buat Kelas Baru',
+            'update_school::class' => 'Edit Kelas',
+            'delete_school::class' => 'Hapus Kelas',
         ];
 
         // Student - Full CRUD
@@ -62,6 +78,14 @@ class AdminPermissionsSeeder extends Seeder
             'view_any_student_class_history' => 'Lihat Daftar Riwayat Kelas',
             'create_student_class_history' => 'Buat Riwayat Kelas Baru',
             'update_student_class_history' => 'Edit Riwayat Kelas',
+        ];
+
+        $studentClassHistoryPermissionsShield = [
+            'view_student::class::history' => 'Lihat Riwayat Kelas Siswa',
+            'view_any_student::class::history' => 'Lihat Daftar Riwayat Kelas',
+            'create_student::class::history' => 'Buat Riwayat Kelas Baru',
+            'update_student::class::history' => 'Edit Riwayat Kelas',
+            'delete_student::class::history' => 'Hapus Riwayat Kelas',
         ];
 
         // Invoice - Full CRUD
@@ -100,11 +124,35 @@ class AdminPermissionsSeeder extends Seeder
             'delete_virtual_account' => 'Hapus Rekening Virtual',
         ];
 
+        $virtualAccountPermissionsShield = [
+            'view_virtual::account' => 'Lihat Rekening Virtual',
+            'view_any_virtual::account' => 'Lihat Daftar Rekening Virtual',
+            'create_virtual::account' => 'Buat Rekening Virtual',
+            'update_virtual::account' => 'Edit Rekening Virtual',
+            'delete_virtual::account' => 'Hapus Rekening Virtual',
+        ];
+
         // Financial Report - Create, Read
         $financialReportPermissions = [
             'view_financial::report' => 'Lihat Laporan Keuangan',
             'view_any_financial::report' => 'Lihat Daftar Laporan Keuangan',
             'create_financial::report' => 'Buat Laporan Keuangan',
+        ];
+
+        $roleScopePermissionsShield = [
+            'view_role::has::scope' => 'Lihat Scope Role',
+            'view_any_role::has::scope' => 'Lihat Daftar Scope Role',
+            'create_role::has::scope' => 'Buat Scope Role',
+            'update_role::has::scope' => 'Edit Scope Role',
+            'delete_role::has::scope' => 'Hapus Scope Role',
+        ];
+
+        $contactUsPermissionsShield = [
+            'view_contact::us' => 'Lihat Kontak Masuk',
+            'view_any_contact::us' => 'Lihat Daftar Kontak Masuk',
+            'create_contact::us' => 'Buat Kontak Masuk',
+            'update_contact::us' => 'Edit Kontak Masuk',
+            'delete_contact::us' => 'Hapus Kontak Masuk',
         ];
 
         // School - Read & Update (No delete - critical data)
@@ -130,14 +178,20 @@ class AdminPermissionsSeeder extends Seeder
         // Combine all permissions
         $allPermissions = array_merge(
             $academicYearPermissions,
+            $academicYearPermissionsShield,
             $classPermissions,
+            $classPermissionsShield,
             $studentPermissions,
             $studentClassHistoryPermissions,
+            $studentClassHistoryPermissionsShield,
             $invoicePermissions,
             $receiptPermissions,
             $tariffPermissions,
             $virtualAccountPermissions,
+            $virtualAccountPermissionsShield,
             $financialReportPermissions,
+            $roleScopePermissionsShield,
+            $contactUsPermissionsShield,
             $schoolPermissions,
             $userPermissions,
             $systemPermissions
@@ -153,10 +207,14 @@ class AdminPermissionsSeeder extends Seeder
 
         // Get admin role
         $adminRole = Role::where('name', 'admin')->firstOrFail();
+        $superAdminRole = Role::where('name', 'super_admin')->first();
 
         // Assign all permissions to admin role
         foreach (array_keys($allPermissions) as $permissionName) {
             $adminRole->givePermissionTo($permissionName);
+            if ($superAdminRole) {
+                $superAdminRole->givePermissionTo($permissionName);
+            }
         }
 
         $this->command->info('✓ Admin permissions created and assigned');

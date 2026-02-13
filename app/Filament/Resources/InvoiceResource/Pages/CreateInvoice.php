@@ -40,7 +40,8 @@ class CreateInvoice extends CreateRecord
             $tariffItems = $data['tariff_items'] ?? [];
             abort_if(empty($tariffItems), 400, 'Minimal pilih satu jenis pembayaran');
 
-            $va = VirtualAccount::findOrFail($data['virtual_account_id']);
+            $va = VirtualAccount::find($data['virtual_account_id'] ?? null)
+                ?? VirtualAccount::where('is_active', true)->orderBy('id')->firstOrFail();
             $academicYear = AcademicYear::findOrFail($data['academic_year_id']);
             
             // Parse tahun ajaran (format: "2024/2025")

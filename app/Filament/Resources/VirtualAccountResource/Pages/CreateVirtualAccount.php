@@ -13,6 +13,12 @@ class CreateVirtualAccount extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        if (VirtualAccount::count() > 0) {
+            throw ValidationException::withMessages([
+                'va_number' => 'Virtual Account sudah ada. Sistem hanya mengizinkan satu VA aktif.',
+            ]);
+        }
+
         // Prevent duplicate VA with same bank_name + va_number
         if (isset($data['bank_name'], $data['va_number'])) {
             $exists = VirtualAccount::where('bank_name', $data['bank_name'])

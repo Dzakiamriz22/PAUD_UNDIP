@@ -144,7 +144,11 @@ class VirtualAccountResource extends Resource
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->can('create_virtual::account') ?? false;
+        if (! (auth()->user()?->can('create_virtual::account') ?? false)) {
+            return false;
+        }
+
+        return VirtualAccount::count() === 0;
     }
 
     public static function canView(Model $record): bool
