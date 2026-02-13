@@ -380,7 +380,7 @@
         <!-- Actions -->
         <div class="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
             <div class="text-sm text-gray-600 dark:text-gray-400">
-                <p class="font-medium text-gray-900 dark:text-gray-100">Export atau Cetak Laporan</p>
+                <p class="font-medium text-gray-900 dark:text-gray-100">Export Laporan</p>
                 <p class="text-xs mt-0.5">Unduh laporan dalam format PDF atau Excel</p>
             </div>
             <div class="flex gap-2">
@@ -391,10 +391,6 @@
                 <button wire:click="exportExcel" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md font-medium transition flex items-center gap-2">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
                     Excel
-                </button>
-                <button onclick="window.print()" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded-md font-medium transition flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd"/></svg>
-                    Print
                 </button>
             </div>
         </div>

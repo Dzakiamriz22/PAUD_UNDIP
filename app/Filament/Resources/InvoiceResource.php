@@ -431,21 +431,30 @@ class InvoiceResource extends Resource
                                 ->required()
                                 ->native(false),
 
-                            Forms\Components\Select::make('virtual_account_id')
-                                ->label('Bank Pembayaran')
-                                ->options(function () {
-                                    $rows = \DB::table('virtual_accounts')
-                                        ->selectRaw('MIN(id) as id, bank_name, va_number')
+                            Forms\Components\Hidden::make('virtual_account_id')
+                                ->default(function () {
+                                    return \DB::table('virtual_accounts')
                                         ->where('is_active', 1)
-                                        ->groupBy('bank_name', 'va_number')
-                                        ->orderBy('bank_name')
-                                        ->get();
-
-                                    return $rows->mapWithKeys(function ($r) {
-                                        return [ $r->id => ($r->bank_name . ' - ' . $r->va_number) ];
-                                    })->toArray();
+                                        ->orderBy('id')
+                                        ->value('id');
                                 })
                                 ->required(),
+
+                            Forms\Components\Placeholder::make('virtual_account_display')
+                                ->label('Bank Pembayaran')
+                                ->content(function () {
+                                    $va = \DB::table('virtual_accounts')
+                                        ->select(['bank_name', 'va_number'])
+                                        ->where('is_active', 1)
+                                        ->orderBy('id')
+                                        ->first();
+
+                                    if (!$va) {
+                                        return 'Belum ada VA aktif.';
+                                    }
+
+                                    return trim($va->bank_name . ' - ' . $va->va_number);
+                                }),
                         ]),
 
                         Forms\Components\Section::make('Preview Ringkasan')

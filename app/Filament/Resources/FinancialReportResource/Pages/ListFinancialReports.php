@@ -2,13 +2,14 @@
 
 namespace App\Filament\Resources\FinancialReportResource\Pages;
 
+use App\Exports\FinancialReportExport;
 use App\Filament\Resources\FinancialReportResource;
 use App\Models\Invoice;
 use App\Models\Receipt;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ListFinancialReports extends ListRecords
 {
@@ -309,88 +310,39 @@ class ListFinancialReports extends ListRecords
         if ($this->granularity === 'monthly' && $this->month) {
             $filename .= '-' . str_pad($this->month, 2, '0', STR_PAD_LEFT);
         }
-        $filename .= '.csv';
-        
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        $filename .= '.xlsx';
+
+        $summary = [
+            'Periode' => $this->granularity === 'monthly' ? 'Bulanan' : 'Tahunan',
+            'Tahun' => $this->year,
         ];
-        
-        $callback = function() {
-            $file = fopen('php://output', 'w');
-            
-            // BOM for UTF-8
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
-            // Summary Section
-            fputcsv($file, ['LAPORAN KEUANGAN PAUD UNDIP']);
-            fputcsv($file, ['Periode', $this->granularity === 'monthly' ? 'Bulanan' : 'Tahunan']);
-            fputcsv($file, ['Tahun', $this->year]);
-            if ($this->granularity === 'monthly' && $this->month) {
-                fputcsv($file, ['Bulan', \DateTime::createFromFormat('!m', $this->month)->format('F')]);
-            }
-            fputcsv($file, []);
-            
-            // Metrics
-            fputcsv($file, ['RINGKASAN KEUANGAN']);
-            fputcsv($file, ['Total Tagihan', 'Rp ' . number_format($this->totalInvoiced, 0, ',', '.')]);
-            fputcsv($file, ['Total Pembayaran', 'Rp ' . number_format($this->totalPaid, 0, ',', '.')]);
-            fputcsv($file, ['Total Outstanding', 'Rp ' . number_format($this->totalOutstanding, 0, ',', '.')]);
-            fputcsv($file, ['Total Diskon', 'Rp ' . number_format($this->totalDiscounts, 0, ',', '.')]);
-            fputcsv($file, ['Rata-rata Transaksi', 'Rp ' . number_format($this->averageTransactionValue, 0, ',', '.')]);
-            fputcsv($file, ['Jumlah Transaksi', number_format($this->transactionCount, 0, ',', '.')]);
-            fputcsv($file, ['Tingkat Koleksi', number_format($this->collectionRate, 2) . '%']);
-            fputcsv($file, []);
-            
-            // Report Rows
-            fputcsv($file, ['LAPORAN AGREGAT']);
-            fputcsv($file, ['Periode', 'Jumlah Transaksi', 'Total Pembayaran']);
-            foreach ($this->reportRows as $row) {
-                $period = $row['month'] 
-                    ? \DateTime::createFromFormat('!m', $row['month'])->format('F') . ' ' . $row['year']
-                    : $row['year'];
-                fputcsv($file, [
-                    $period,
-                    $row['count'],
-                    'Rp ' . number_format($row['total_amount'], 0, ',', '.')
-                ]);
-            }
-            fputcsv($file, []);
-            
-            // Income Sources
-            fputcsv($file, ['SUMBER PEMASUKAN']);
-            fputcsv($file, ['Sumber', 'Jumlah Item', 'Total', 'Persentase']);
-            $grand = array_sum(array_column($this->incomeSources, 'total_amount') ?: [0]);
-            foreach ($this->incomeSources as $source) {
-                $pct = $grand > 0 ? ($source['total_amount'] / $grand) * 100 : 0;
-                fputcsv($file, [
-                    $source['income_type'],
-                    $source['items_count'],
-                    'Rp ' . number_format($source['total_amount'], 0, ',', '.'),
-                    number_format($pct, 2) . '%'
-                ]);
-            }
-            fputcsv($file, []);
-            
-            // Collection by Class
-            if (!empty($this->collectionByClass)) {
-                fputcsv($file, ['RINGKASAN KOLEKSI PER KELAS']);
-                fputcsv($file, ['Kelas', 'Jumlah Siswa', 'Total Tagihan', 'Pembayaran', 'Tunggakan', 'Tingkat Koleksi']);
-                foreach ($this->collectionByClass as $class) {
-                    fputcsv($file, [
-                        $class['class_name'],
-                        $class['student_count'],
-                        'Rp ' . number_format($class['total_invoiced'], 0, ',', '.'),
-                        'Rp ' . number_format($class['total_paid'], 0, ',', '.'),
-                        'Rp ' . number_format($class['outstanding'], 0, ',', '.'),
-                        number_format($class['collection_rate'], 2) . '%'
-                    ]);
-                }
-            }
-            
-            fclose($file);
-        };
-        
-        return Response::stream($callback, 200, $headers);
+
+        if ($this->granularity === 'monthly' && $this->month) {
+            $summary['Bulan'] = \DateTime::createFromFormat('!m', $this->month)->format('F');
+        }
+
+        $summary['Total Tagihan'] = (float) $this->totalInvoiced;
+        $summary['Total Pembayaran'] = (float) $this->totalPaid;
+        $summary['Total Outstanding'] = (float) $this->totalOutstanding;
+        $summary['Total Diskon'] = (float) $this->totalDiscounts;
+        $summary['Rata-rata Transaksi'] = (float) $this->averageTransactionValue;
+        $summary['Jumlah Transaksi'] = (int) $this->transactionCount;
+        $summary['Tingkat Koleksi'] = number_format($this->collectionRate, 2) . '%';
+        $summary['Total Pembayaran Periode Ini'] = (float) $this->currentPeriodTotal;
+        $summary['Total Pembayaran Periode Sebelumnya'] = (float) $this->previousPeriodTotal;
+        $summary['Perubahan Periode'] = number_format($this->periodChangePercent, 2) . '%';
+        $summary['Waktu Export'] = now()->format('Y-m-d H:i');
+
+        $export = new FinancialReportExport(
+            $this->granularity,
+            $this->month,
+            $this->year,
+            $summary,
+            $this->reportRows,
+            $this->incomeSources,
+            $this->collectionByClass
+        );
+
+        return Excel::download($export, $filename);
     }
 }
