@@ -19,7 +19,12 @@ class GeneralSettings extends Settings
 
     public string $application_code = '';
     public string $application_owner = '';
-    // public string $invoice_number_format;
+    
+    // School information
+    public string $school_name = '';
+    public ?string $school_address = null;
+    public ?string $school_contact = null;
+    public ?string $school_logo_url = null;
 
     public static function group(): string
     {

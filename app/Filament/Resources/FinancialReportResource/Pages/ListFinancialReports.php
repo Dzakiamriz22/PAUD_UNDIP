@@ -224,7 +224,7 @@ class ListFinancialReports extends ListRecords
             ->toArray();
         
         $invoiceData = $invoiceQuery
-            ->selectRaw('classes.code, SUM(invoices.total_amount) as total_invoiced, COUNT(DISTINCT students.id) as student_count')
+            ->selectRaw('classes.code, SUM(invoices.total_amount) as total_invoiced')
             ->groupBy('classes.id', 'classes.code')
             ->get()
             ->keyBy('code')
@@ -238,7 +238,6 @@ class ListFinancialReports extends ListRecords
             
             $this->collectionByClass[] = [
                 'class_name' => $classCode,
-                'student_count' => (int) $data->student_count,
                 'total_invoiced' => $totalInvoiced,
                 'total_paid' => $totalPaid,
                 'outstanding' => max(0, $totalInvoiced - $totalPaid),

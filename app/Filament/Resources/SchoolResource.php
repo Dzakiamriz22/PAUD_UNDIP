@@ -88,12 +88,12 @@ class SchoolResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->can('view_any_school') ?? false;
+        return false; // ✅ Dipindahkan ke Settings Panel
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->can('create_school') ?? false;
+        return false; // ✅ Hanya bisa dikelola via Settings
     }
 
     public static function canView(Model $record): bool

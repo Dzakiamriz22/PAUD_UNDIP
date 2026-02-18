@@ -42,16 +42,23 @@ class FinancialReportExport implements WithMultipleSheets
 
     public function sheets(): array
     {
-        return [
+        $sheets = [
             new SummarySheet($this->summary),
-            new AggregateSheet($this->reportRows),
-            new IncomeSourcesSheet($this->incomeSources),
-            new CollectionByClassSheet($this->collectionByClass),
-            new StudentRecapSheet($this->granularity, $this->month, $this->year),
-            new ItemDetailSheet($this->granularity, $this->month, $this->year),
-            new ComprehensiveDetailSheet($this->granularity, $this->month, $this->year),
-            new PaymentDetailSheet($this->granularity, $this->month, $this->year),
         ];
+
+        // For yearly reports, add monthly breakdown with transactions
+        if ($this->granularity === 'yearly') {
+            $sheets[] = new MonthlyTransactionSheet($this->year);
+        }
+
+        // Add class and student summaries
+        $sheets[] = new CollectionByClassSheet($this->collectionByClass);
+        $sheets[] = new StudentRecapSheet($this->granularity, $this->month, $this->year);
+        
+        // Add comprehensive detail sheet
+        $sheets[] = new ComprehensiveDetailSheet($this->granularity, $this->month, $this->year);
+
+        return $sheets;
     }
 }
 
@@ -85,33 +92,115 @@ class SummarySheet implements FromArray, WithHeadings, WithTitle, ShouldAutoSize
     }
 }
 
-class AggregateSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
+class MonthlyTransactionSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
 {
-    private array $rows;
+    private ?int $year;
 
-    public function __construct(array $rows)
+    public function __construct(?int $year)
     {
-        $this->rows = $rows;
+        $this->year = $year;
     }
 
     public function headings(): array
     {
-        return ['Periode', 'Jumlah Transaksi', 'Total Pembayaran'];
+        return [
+            'Bulan',
+            'Jumlah Transaksi',
+            'Total Pembayaran',
+            'No Invoice',
+            'Nama Siswa',
+            'NIS',
+            'Kelas',
+            'Metode Bayar',
+            'Jumlah',
+            'Tanggal Bayar',
+            'No Referensi',
+        ];
     }
 
     public function array(): array
     {
-        $data = [];
-        foreach ($this->rows as $row) {
-            $period = $row['month']
-                ? Carbon::createFromDate($row['year'], $row['month'], 1)->format('F Y')
-                : (string) $row['year'];
+        $transactions = DB::table('receipts')
+            ->join('invoices', 'receipts.invoice_id', '=', 'invoices.id')
+            ->join('students', 'invoices.student_id', '=', 'students.id')
+            ->leftJoin('student_class_histories as sch', function ($join) {
+                $join->on('students.id', '=', 'sch.student_id')
+                    ->where('sch.is_active', true);
+            })
+            ->leftJoin('classes', 'sch.class_id', '=', 'classes.id')
+            ->select([
+                'receipts.id',
+                'receipts.payment_date',
+                'receipts.receipt_number',
+                'receipts.amount_paid',
+                'receipts.payment_method',
+                'receipts.reference_number',
+                'invoices.invoice_number',
+                'students.name',
+                'students.nis',
+                'classes.code',
+            ])
+            ->whereYear('receipts.payment_date', $this->year)
+            ->orderBy('receipts.payment_date')
+            ->get();
 
-            $data[] = [
-                $period,
-                (int) $row['count'],
-                (float) $row['total_amount'],
-            ];
+        $data = [];
+        $monthSummary = [];
+
+        // Group by month
+        foreach ($transactions as $tx) {
+            $paymentMonth = Carbon::parse($tx->payment_date)->format('m');
+            $monthName = $this->getMonthName((int) $paymentMonth);
+
+            if (!isset($monthSummary[$monthName])) {
+                $monthSummary[$monthName] = [
+                    'count' => 0,
+                    'total' => 0,
+                    'transactions' => [],
+                ];
+            }
+
+            $monthSummary[$monthName]['count']++;
+            $monthSummary[$monthName]['total'] += (float) $tx->amount_paid;
+            $monthSummary[$monthName]['transactions'][] = $tx;
+        }
+
+        // Build rows with monthly summary first, then transaction details
+        foreach ($monthSummary as $monthName => $summary) {
+            $isFirstRow = true;
+
+            foreach ($summary['transactions'] as $tx) {
+                if ($isFirstRow) {
+                    $data[] = [
+                        $monthName,
+                        $summary['count'],
+                        (float) $summary['total'],
+                        $tx->invoice_number,
+                        $tx->name,
+                        $tx->nis,
+                        $tx->code ?? '-',
+                        $this->formatPaymentMethod($tx->payment_method),
+                        (float) $tx->amount_paid,
+                        Carbon::parse($tx->payment_date),
+                        $tx->reference_number,
+                    ];
+                    $isFirstRow = false;
+                } else {
+                    $data[] = [
+                        '', // Month column empty for continuation
+                        '',
+                        '',
+                        $tx->invoice_number,
+                        $tx->name,
+                        $tx->nis,
+                        $tx->code ?? '-',
+                        $this->formatPaymentMethod($tx->payment_method),
+                        (float) $tx->amount_paid,
+                        Carbon::parse($tx->payment_date),
+                        $tx->reference_number,
+                    ];
+                }
+            }
         }
 
         return $data;
@@ -121,58 +210,34 @@ class AggregateSheet implements FromArray, WithHeadings, WithTitle, WithColumnFo
     {
         return [
             'C' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+            'I' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+            'J' => NumberFormat::FORMAT_DATE_XLSX14,
         ];
     }
 
     public function title(): string
     {
-        return 'Laporan Agregat';
-    }
-}
-
-class IncomeSourcesSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
-{
-    private array $sources;
-
-    public function __construct(array $sources)
-    {
-        $this->sources = $sources;
+        return 'Transaksi Bulanan';
     }
 
-    public function headings(): array
-    {
-        return ['Sumber', 'Jumlah Item', 'Total', 'Persentase'];
-    }
-
-    public function array(): array
-    {
-        $data = [];
-        $grand = array_sum(array_column($this->sources, 'total_amount') ?: [0]);
-
-        foreach ($this->sources as $source) {
-            $pct = $grand > 0 ? ($source['total_amount'] / $grand) : 0;
-            $data[] = [
-                $source['income_type'],
-                (int) $source['items_count'],
-                (float) $source['total_amount'],
-                $pct,
-            ];
-        }
-
-        return $data;
-    }
-
-    public function columnFormats(): array
+    private function getMonthName(int $month): string
     {
         return [
-            'C' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
-            'D' => NumberFormat::FORMAT_PERCENTAGE_00,
-        ];
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+        ][$month - 1] ?? '';
     }
 
-    public function title(): string
+    private function formatPaymentMethod(?string $method): string
     {
-        return 'Sumber Pemasukan';
+        return match ($method) {
+            'cash' => 'Tunai',
+            'bank_transfer' => 'Transfer',
+            'va' => 'VA',
+            'qris' => 'QRIS',
+            'other' => 'Lainnya',
+            default => $method ?? '-',
+        };
     }
 }
 
@@ -187,16 +252,22 @@ class CollectionByClassSheet implements FromArray, WithHeadings, WithTitle, With
 
     public function headings(): array
     {
-        return ['Kelas', 'Jumlah Siswa', 'Total Tagihan', 'Pembayaran', 'Tunggakan', 'Tingkat Koleksi'];
+        return [
+            'Kelas',
+            'Total Tagihan',
+            'Total Terkumpul',
+            'Tunggakan',
+            'Tingkat Koleksi',
+        ];
     }
 
     public function array(): array
     {
         $data = [];
+
         foreach ($this->rows as $row) {
             $data[] = [
                 $row['class_name'],
-                (int) $row['student_count'],
                 (float) $row['total_invoiced'],
                 (float) $row['total_paid'],
                 (float) $row['outstanding'],
@@ -210,10 +281,10 @@ class CollectionByClassSheet implements FromArray, WithHeadings, WithTitle, With
     public function columnFormats(): array
     {
         return [
+            'B' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
             'C' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
             'D' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
-            'E' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
-            'F' => NumberFormat::FORMAT_PERCENTAGE_00,
+            'E' => NumberFormat::FORMAT_PERCENTAGE_00,
         ];
     }
 
@@ -246,22 +317,19 @@ class StudentRecapSheet implements FromArray, WithHeadings, WithTitle, WithColum
             'Total Pembayaran',
             'Tunggakan',
             'Tingkat Koleksi',
-            'Jumlah Invoice',
-            'Jumlah Pembayaran',
-            'Pembayaran Terakhir',
         ];
     }
 
     public function array(): array
     {
         $invoiceRows = $this->buildInvoiceQuery()
-            ->selectRaw('students.id as student_id, students.name as student_name, students.nis, classes.code as class_code, SUM(invoices.total_amount) as total_invoiced, COUNT(invoices.id) as invoice_count')
+            ->selectRaw('students.id as student_id, students.name as student_name, students.nis, classes.code as class_code, SUM(invoices.total_amount) as total_invoiced')
             ->groupBy('students.id', 'students.name', 'students.nis', 'classes.code')
             ->get();
 
         $receiptRows = $this->buildReceiptQuery()
-            ->selectRaw('students.id as student_id, students.name as student_name, students.nis, classes.code as class_code, SUM(receipts.amount_paid) as total_paid, COUNT(receipts.id) as payment_count, MAX(receipts.payment_date) as last_payment_date')
-            ->groupBy('students.id', 'students.name', 'students.nis', 'classes.code')
+            ->selectRaw('students.id as student_id, SUM(receipts.amount_paid) as total_paid')
+            ->groupBy('students.id')
             ->get();
 
         $rowsByStudent = [];
@@ -272,32 +340,14 @@ class StudentRecapSheet implements FromArray, WithHeadings, WithTitle, WithColum
                 'nis' => $row->nis,
                 'class_code' => $row->class_code ?? '-',
                 'total_invoiced' => (float) $row->total_invoiced,
-                'invoice_count' => (int) $row->invoice_count,
                 'total_paid' => 0.0,
-                'payment_count' => 0,
-                'last_payment_date' => null,
             ];
         }
 
         foreach ($receiptRows as $row) {
-            if (!isset($rowsByStudent[$row->student_id])) {
-                $rowsByStudent[$row->student_id] = [
-                    'student_name' => $row->student_name,
-                    'nis' => $row->nis,
-                    'class_code' => $row->class_code ?? '-',
-                    'total_invoiced' => 0.0,
-                    'invoice_count' => 0,
-                    'total_paid' => 0.0,
-                    'payment_count' => 0,
-                    'last_payment_date' => null,
-                ];
+            if (isset($rowsByStudent[$row->student_id])) {
+                $rowsByStudent[$row->student_id]['total_paid'] = (float) $row->total_paid;
             }
-
-            $rowsByStudent[$row->student_id]['total_paid'] = (float) $row->total_paid;
-            $rowsByStudent[$row->student_id]['payment_count'] = (int) $row->payment_count;
-            $rowsByStudent[$row->student_id]['last_payment_date'] = $row->last_payment_date
-                ? Carbon::parse($row->last_payment_date)
-                : null;
         }
 
         $rows = array_values($rowsByStudent);
@@ -325,9 +375,6 @@ class StudentRecapSheet implements FromArray, WithHeadings, WithTitle, WithColum
                 (float) $row['total_paid'],
                 (float) $outstanding,
                 $collectionRate,
-                (int) $row['invoice_count'],
-                (int) $row['payment_count'],
-                $row['last_payment_date'],
             ];
         }
 
@@ -341,7 +388,6 @@ class StudentRecapSheet implements FromArray, WithHeadings, WithTitle, WithColum
             'E' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
             'F' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
             'G' => NumberFormat::FORMAT_PERCENTAGE_00,
-            'J' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
         ];
     }
 
@@ -354,12 +400,7 @@ class StudentRecapSheet implements FromArray, WithHeadings, WithTitle, WithColum
     {
         $query = DB::table('receipts')
             ->join('invoices', 'receipts.invoice_id', '=', 'invoices.id')
-            ->join('students', 'invoices.student_id', '=', 'students.id')
-            ->leftJoin('student_class_histories as sch', function ($join) {
-                $join->on('students.id', '=', 'sch.student_id')
-                    ->where('sch.is_active', true);
-            })
-            ->leftJoin('classes', 'sch.class_id', '=', 'classes.id');
+            ->join('students', 'invoices.student_id', '=', 'students.id');
 
         if ($this->granularity === 'monthly') {
             $query->whereYear('receipts.payment_date', $this->year);
@@ -400,246 +441,6 @@ class StudentRecapSheet implements FromArray, WithHeadings, WithTitle, WithColum
     }
 }
 
-class PaymentDetailSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
-{
-    private string $granularity;
-    private ?int $month;
-    private ?int $year;
-
-    public function __construct(string $granularity, ?int $month, ?int $year)
-    {
-        $this->granularity = $granularity;
-        $this->month = $month;
-        $this->year = $year;
-    }
-
-    public function headings(): array
-    {
-        return [
-            'Tanggal Bayar',
-            'Nomor Kwitansi',
-            'Nomor Invoice',
-            'Nama Siswa',
-            'NIS',
-            'Kelas',
-            'Metode Pembayaran',
-            'Jumlah Bayar',
-            'Nomor Referensi',
-            'Catatan',
-        ];
-    }
-
-    public function array(): array
-    {
-        $rows = $this->buildReceiptQuery()
-            ->select([
-                'receipts.payment_date',
-                'receipts.receipt_number',
-                'invoices.invoice_number',
-                'students.name as student_name',
-                'students.nis',
-                'classes.code as class_code',
-                'receipts.payment_method',
-                'receipts.amount_paid',
-                'receipts.reference_number',
-                'receipts.note',
-            ])
-            ->orderBy('receipts.payment_date')
-            ->get();
-
-        $data = [];
-        foreach ($rows as $row) {
-            $data[] = [
-                $row->payment_date ? Carbon::parse($row->payment_date) : null,
-                $row->receipt_number,
-                $row->invoice_number,
-                $row->student_name,
-                $row->nis,
-                $row->class_code ?? '-',
-                $this->formatPaymentMethod($row->payment_method),
-                (float) $row->amount_paid,
-                $row->reference_number,
-                $row->note,
-            ];
-        }
-
-        return $data;
-    }
-
-    public function columnFormats(): array
-    {
-        return [
-            'A' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
-            'H' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
-        ];
-    }
-
-    public function title(): string
-    {
-        return 'Detail Pembayaran';
-    }
-
-    private function buildReceiptQuery()
-    {
-        $query = DB::table('receipts')
-            ->join('invoices', 'receipts.invoice_id', '=', 'invoices.id')
-            ->join('students', 'invoices.student_id', '=', 'students.id')
-            ->leftJoin('student_class_histories as sch', function ($join) {
-                $join->on('students.id', '=', 'sch.student_id')
-                    ->where('sch.is_active', true);
-            })
-            ->leftJoin('classes', 'sch.class_id', '=', 'classes.id');
-
-        if ($this->granularity === 'monthly') {
-            $query->whereYear('receipts.payment_date', $this->year);
-            if (!empty($this->month)) {
-                $query->whereMonth('receipts.payment_date', $this->month);
-            }
-        } else {
-            if (!empty($this->year)) {
-                $query->whereYear('receipts.payment_date', $this->year);
-            }
-        }
-
-        return $query;
-    }
-
-    private function formatPaymentMethod(?string $method): string
-    {
-        return match ($method) {
-            'cash' => 'Tunai',
-            'bank_transfer' => 'Transfer Bank',
-            'va' => 'Virtual Account',
-            'qris' => 'QRIS',
-            'other' => 'Lainnya',
-            default => $method ?? '-',
-        };
-    }
-}
-
-class ItemDetailSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
-{
-    private string $granularity;
-    private ?int $month;
-    private ?int $year;
-
-    public function __construct(string $granularity, ?int $month, ?int $year)
-    {
-        $this->granularity = $granularity;
-        $this->month = $month;
-        $this->year = $year;
-    }
-
-    public function headings(): array
-    {
-        return [
-            'Nomor Invoice',
-            'Nama Siswa',
-            'NIS',
-            'Kelas',
-            'Jenis Pemasukan',
-            'Jenis Tagihan',
-            'Periode Bulan',
-            'Periode Tahun',
-            'Tanggal Harian',
-            'Deskripsi Item',
-            'Nominal',
-        ];
-    }
-
-    public function array(): array
-    {
-        $rows = $this->buildInvoiceItemQuery()
-            ->select([
-                'invoices.invoice_number',
-                'students.name as student_name',
-                'students.nis',
-                'classes.code as class_code',
-                'income_types.name as income_type',
-                'tariffs.billing_type',
-                'invoice_items.period_month',
-                'invoice_items.period_year',
-                'invoice_items.period_day',
-                'invoice_items.description',
-                'invoice_items.final_amount',
-            ])
-            ->orderBy('students.name')
-            ->orderBy('invoices.invoice_number')
-            ->get();
-
-        $data = [];
-        foreach ($rows as $row) {
-            $data[] = [
-                $row->invoice_number,
-                $row->student_name,
-                $row->nis,
-                $row->class_code ?? '-',
-                $row->income_type,
-                $this->formatBillingType($row->billing_type),
-                $row->period_month,
-                $row->period_year,
-                $row->period_day ? Carbon::parse($row->period_day) : null,
-                $row->description,
-                (float) $row->final_amount,
-            ];
-        }
-
-        return $data;
-    }
-
-    public function columnFormats(): array
-    {
-        return [
-            'I' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
-            'K' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
-        ];
-    }
-
-    public function title(): string
-    {
-        return 'Detail Item';
-    }
-
-    private function buildInvoiceItemQuery()
-    {
-        $query = DB::table('invoice_items')
-            ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
-            ->join('students', 'invoices.student_id', '=', 'students.id')
-            ->leftJoin('student_class_histories as sch', function ($join) {
-                $join->on('students.id', '=', 'sch.student_id')
-                    ->where('sch.is_active', true);
-            })
-            ->leftJoin('classes', 'sch.class_id', '=', 'classes.id')
-            ->leftJoin('tariffs', 'invoice_items.tariff_id', '=', 'tariffs.id')
-            ->leftJoin('income_types', 'tariffs.income_type_id', '=', 'income_types.id');
-
-        if ($this->granularity === 'monthly') {
-            $query->whereYear('invoices.created_at', $this->year);
-            if (!empty($this->month)) {
-                $query->whereMonth('invoices.created_at', $this->month);
-            }
-        } else {
-            if (!empty($this->year)) {
-                $query->whereYear('invoices.created_at', $this->year);
-            }
-        }
-
-        return $query;
-    }
-
-    private function formatBillingType(?string $type): string
-    {
-        return match ($type) {
-            'once' => 'Sekali Bayar',
-            'monthly' => 'Bulanan',
-            'yearly' => 'Tahunan',
-            'daily' => 'Harian',
-            'penalty' => 'Denda',
-            default => $type ?? '-',
-        };
-    }
-}
-
 class ComprehensiveDetailSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
 {
     private string $granularity;
@@ -659,27 +460,20 @@ class ComprehensiveDetailSheet implements FromArray, WithHeadings, WithTitle, Wi
             'Nama Siswa',
             'NIS',
             'Kelas',
-            'Status Invoice',
-            'Nomor Invoice',
-            'Tanggal Invoice',
-            'Jatuh Tempo',
-            'Tanggal Bayar',
-            'Nomor Kwitansi',
-            'Metode Pembayaran',
-            'Nomor Referensi',
-            'Virtual Account',
+            'No Invoice',
+            'Tgl Invoice',
+            'Tgl Jatuh Tempo',
             'Jenis Pemasukan',
             'Jenis Tagihan',
-            'Periode Bulan',
-            'Periode Tahun',
-            'Tanggal Harian',
             'Deskripsi Item',
             'Nominal Item',
-            'Sub Total Invoice',
-            'Total Diskon',
+            'Sub Total',
+            'Diskon',
             'Total Tagihan',
-            'Total Pembayaran',
-            'Tunggakan',
+            'No Kwitansi',
+            'Metode Bayar',
+            'Jumlah Bayar',
+            'Tgl Bayar',
         ];
     }
 
@@ -690,27 +484,20 @@ class ComprehensiveDetailSheet implements FromArray, WithHeadings, WithTitle, Wi
                 'students.name as student_name',
                 'students.nis',
                 'classes.code as class_code',
-                'invoices.status',
                 'invoices.invoice_number',
                 'invoices.issued_at',
                 'invoices.due_date',
-                'receipts.payment_date',
-                'receipts.receipt_number',
-                'receipts.payment_method',
-                'receipts.reference_number',
-                'invoices.va_bank',
-                'invoices.va_number',
-                'income_types.name as income_type',
-                'tariffs.billing_type',
-                'invoice_items.period_month',
-                'invoice_items.period_year',
-                'invoice_items.period_day',
-                'invoice_items.description',
-                'invoice_items.final_amount',
                 'invoices.sub_total',
                 'invoices.discount_amount',
                 'invoices.total_amount',
+                'income_types.name as income_type',
+                'tariffs.billing_type',
+                'invoice_items.description',
+                'invoice_items.final_amount',
+                'receipts.receipt_number',
+                'receipts.payment_method',
                 'receipts.amount_paid',
+                'receipts.payment_date',
             ])
             ->orderBy('students.name')
             ->orderBy('invoices.invoice_number')
@@ -719,35 +506,24 @@ class ComprehensiveDetailSheet implements FromArray, WithHeadings, WithTitle, Wi
 
         $data = [];
         foreach ($rows as $row) {
-            $totalPaid = (float) ($row->amount_paid ?? 0);
-            $totalInvoiced = (float) ($row->total_amount ?? 0);
-            $outstanding = max(0, $totalInvoiced - $totalPaid);
-
             $data[] = [
                 $row->student_name,
                 $row->nis,
                 $row->class_code ?? '-',
-                $row->status ?? '-',
                 $row->invoice_number,
                 $row->issued_at ? Carbon::parse($row->issued_at) : null,
                 $row->due_date ? Carbon::parse($row->due_date) : null,
-                $row->payment_date ? Carbon::parse($row->payment_date) : null,
-                $row->receipt_number,
-                $this->formatPaymentMethod($row->payment_method),
-                $row->reference_number,
-                $this->formatVirtualAccount($row->va_bank, $row->va_number),
-                $row->income_type,
+                $row->income_type ?? '-',
                 $this->formatBillingType($row->billing_type),
-                $row->period_month,
-                $row->period_year,
-                $row->period_day ? Carbon::parse($row->period_day) : null,
                 $row->description,
-                (float) $row->final_amount,
+                (float) ($row->final_amount ?? 0),
                 (float) ($row->sub_total ?? 0),
                 (float) ($row->discount_amount ?? 0),
-                $totalInvoiced,
-                $totalPaid,
-                $outstanding,
+                (float) ($row->total_amount ?? 0),
+                $row->receipt_number ?? '-',
+                $this->formatPaymentMethod($row->payment_method),
+                (float) ($row->amount_paid ?? 0),
+                $row->payment_date ? Carbon::parse($row->payment_date) : null,
             ];
         }
 
@@ -757,16 +533,14 @@ class ComprehensiveDetailSheet implements FromArray, WithHeadings, WithTitle, Wi
     public function columnFormats(): array
     {
         return [
+            'E' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
             'F' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
-            'G' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
-            'H' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
-            'P' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
-            'R' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
-            'S' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
-            'T' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
-            'U' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
-            'V' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
-            'W' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+            'J' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+            'K' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+            'L' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+            'M' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+            'P' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+            'Q' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
         ];
     }
 
@@ -813,14 +587,6 @@ class ComprehensiveDetailSheet implements FromArray, WithHeadings, WithTitle, Wi
             'other' => 'Lainnya',
             default => $method ?? '-',
         };
-    }
-
-    private function formatVirtualAccount(?string $bank, ?string $number): string
-    {
-        $bank = $bank ?: 'BNI';
-        $number = $number ?: '1234567890';
-
-        return trim($bank . ' - ' . $number);
     }
 
     private function formatBillingType(?string $type): string

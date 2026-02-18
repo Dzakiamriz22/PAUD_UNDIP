@@ -274,6 +274,34 @@ class ManageGeneral extends SettingsPage
                 //             // ->markdown(),
                 //     ]),
 
+                Forms\Components\Section::make('School Information')
+                    ->label('Data Sekolah')
+                    ->description('Kelola informasi dasar sekolah')
+                    ->icon('heroicon-o-building-office')
+                    ->collapsible()
+                    ->schema([
+                        Forms\Components\TextInput::make('school_name')
+                            ->label('Nama Sekolah')
+                            ->required()
+                            ->maxLength(255),
+
+                        Forms\Components\Textarea::make('school_address')
+                            ->label('Alamat')
+                            ->rows(3)
+                            ->maxLength(500),
+
+                        Forms\Components\TextInput::make('school_contact')
+                            ->label('Kontak')
+                            ->placeholder('Contoh: Telp: 024-123456 | Email: sekolah@undip.ac.id')
+                            ->maxLength(255),
+
+                        Forms\Components\TextInput::make('school_logo_url')
+                            ->label('URL Logo')
+                            ->url()
+                            ->helperText('Masukkan URL logo sekolah (opsional)')
+                            ->maxLength(255),
+                    ])->columns(2),
+
                 Forms\Components\Tabs::make('Tabs')
                     ->tabs([
                         Forms\Components\Tabs\Tab::make('Color Palette')

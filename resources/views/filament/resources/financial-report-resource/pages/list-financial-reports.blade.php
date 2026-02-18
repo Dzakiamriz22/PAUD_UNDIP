@@ -332,7 +332,6 @@
                     <thead class="text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                         <tr>
                             <th class="py-2 text-left font-medium">Kelas</th>
-                            <th class="py-2 text-center font-medium">Siswa</th>
                             <th class="py-2 text-right font-medium">Total Tagihan</th>
                             <th class="py-2 text-right font-medium">Pembayaran</th>
                             <th class="py-2 text-right font-medium">Tunggakan</th>
@@ -343,7 +342,6 @@
                         @foreach($collectionByClass as $class)
                             <tr>
                                 <td class="py-2 text-gray-900 dark:text-gray-100 font-medium">{{ $class['class_name'] }}</td>
-                                <td class="py-2 text-center text-gray-700 dark:text-gray-300">{{ $class['student_count'] }}</td>
                                 <td class="py-2 text-right text-gray-900 dark:text-gray-100">
                                     Rp {{ number_format($class['total_invoiced'], 0, ',', '.') }}
                                 </td>
