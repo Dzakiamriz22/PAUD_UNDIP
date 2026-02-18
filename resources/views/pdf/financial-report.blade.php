@@ -236,7 +236,6 @@
         <thead>
             <tr>
                 <th>Kelas</th>
-                <th style="width: 60px; text-align: center;">Siswa</th>
                 <th style="width: 100px; text-align: right;">Total Tagihan</th>
                 <th style="width: 100px; text-align: right;">Pembayaran</th>
                 <th style="width: 80px; text-align: right;">Tunggakan</th>
@@ -247,7 +246,6 @@
             @foreach($collectionByClass as $class)
                 <tr>
                     <td><strong>{{ $class['class_name'] }}</strong></td>
-                    <td style="text-align: center;">{{ $class['student_count'] }}</td>
                     <td style="text-align: right;">Rp {{ number_format($class['total_invoiced'], 0, ',', '.') }}</td>
                     <td style="text-align: right;"><strong>Rp {{ number_format($class['total_paid'], 0, ',', '.') }}</strong></td>
                     <td style="text-align: right;">Rp {{ number_format($class['outstanding'], 0, ',', '.') }}</td>
@@ -270,6 +268,56 @@
                 </tr>
             @endforeach
         </tbody>
+    </table>
+</div>
+@endif
+
+<!-- Monthly Transaction Summary (untuk laporan tahunan) -->
+@if($granularity === 'yearly')
+<div class="section">
+    <div class="section-title">Ringkasan Transaksi Bulanan Tahun {{ $year }}</div>
+    <table class="compact" width="100%">
+        <thead>
+            <tr>
+                <th>Bulan</th>
+                <th style="text-align: center;">Jumlah Transaksi</th>
+                <th style="text-align: right;">Total Pembayaran</th>
+            </tr>
+        </thead>
+        <tbody>
+            @php
+                $monthlyTotals = [];
+                foreach($reportRows as $row) {
+                    if(!isset($monthlyTotals[$row['month']])) {
+                        $monthlyTotals[$row['month']] = ['count' => 0, 'total' => 0];
+                    }
+                    $monthlyTotals[$row['month']]['count'] += $row['count'];
+                    $monthlyTotals[$row['month']]['total'] += $row['total_amount'];
+                }
+                ksort($monthlyTotals);
+                $monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            @endphp
+            @forelse($monthlyTotals as $month => $data)
+                <tr>
+                    <td><strong>{{ $monthNames[$month - 1] ?? 'Unknown' }}</strong></td>
+                    <td style="text-align: center;"><span class="badge-sm">{{ $data['count'] }}</span></td>
+                    <td style="text-align: right;">Rp {{ number_format($data['total'], 0, ',', '.') }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 8px; color: #6b7280;">Tidak ada transaksi dalam tahun ini</td>
+                </tr>
+            @endforelse
+        </tbody>
+        @if(count($monthlyTotals) > 0)
+        <tfoot style="background: #e5e7eb;">
+            <tr>
+                <th>TOTAL</th>
+                <th style="text-align: center;">{{ array_sum(array_column($monthlyTotals, 'count')) }}</th>
+                <th style="text-align: right;">Rp {{ number_format(array_sum(array_column($monthlyTotals, 'total')), 0, ',', '.') }}</th>
+            </tr>
+        </tfoot>
+        @endif
     </table>
 </div>
 @endif
