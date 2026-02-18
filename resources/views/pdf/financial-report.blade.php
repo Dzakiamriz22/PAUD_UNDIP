@@ -6,21 +6,23 @@
     @include('partials.payment-styles')
     <style>
         @page { size: A4 landscape; margin: 10mm; }
-        body { font-size: 9px; line-height: 1.3; color: #000; }
+        body { font-size: 9.5px; line-height: 1.35; color: #000; }
         table { width: 100%; border-collapse: collapse; }
+        .header-table { margin-bottom: 6px; }
         .header-table td { vertical-align: middle; }
-        .title { font-size: 12px; font-weight: 700; text-align: center; }
+        .title { font-size: 12px; font-weight: 700; text-align: center; letter-spacing: 0.2px; }
         .subtitle { font-size: 9px; font-weight: 600; text-align: center; }
         .logo { width: 60px; }
-        .filter-table td { padding: 2px 4px; }
+        .filter-table { border: none; border-collapse: collapse; }
+        .filter-table td { padding: 3px 5px; border: none; }
         .label { font-weight: 700; width: 120px; }
         .separator { width: 10px; text-align: center; }
         .data-table th,
         .data-table td { border: 1px solid #000; padding: 4px; }
-        .data-table th { background: #e6e6e6; text-align: center; font-weight: 700; }
+        .data-table th { background: #f0f0f0; text-align: center; font-weight: 700; }
         .data-table td { vertical-align: top; }
         .col-number th { font-weight: 600; font-size: 8px; }
-        .total-row td { font-weight: 700; background: #e6e6e6; }
+        .total-row td { font-weight: 700; background: #f0f0f0; }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         .signature { margin-top: 18px; }

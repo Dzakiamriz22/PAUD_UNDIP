@@ -7,10 +7,15 @@ use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use Maatwebsite\Excel\Concerns\WithCustomStartCell;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithTitle;
+use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class FinancialReportExport implements WithMultipleSheets
 {
@@ -21,10 +26,10 @@ class FinancialReportExport implements WithMultipleSheets
     private array $reportRows;
     private array $incomeSources;
     private array $collectionByClass;
-    private ?int $incomeTypeId;
-    private ?int $classId;
+    private ?string $incomeTypeId;
+    private ?string $classId;
     private string $status;
-    private ?int $academicYearId;
+    private ?string $academicYearId;
 
     public function __construct(
         string $granularity,
@@ -34,10 +39,10 @@ class FinancialReportExport implements WithMultipleSheets
         array $reportRows,
         array $incomeSources,
         array $collectionByClass,
-        ?int $incomeTypeId = null,
-        ?int $classId = null,
+        ?string $incomeTypeId = null,
+        ?string $classId = null,
         string $status = 'all',
-        ?int $academicYearId = null
+        ?string $academicYearId = null
     ) {
         $this->granularity = $granularity;
         $this->month = $month;
@@ -92,24 +97,55 @@ class FinancialReportExport implements WithMultipleSheets
     }
 }
 
-class RevenueInvoiceSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
+trait HasReportHeader
 {
+    protected function applyReportHeader(AfterSheet $event, string $title, string $lastColumn): void
+    {
+        $sheet = $event->sheet->getDelegate();
+
+        $sheet->mergeCells("A1:{$lastColumn}1");
+        $sheet->mergeCells("A2:{$lastColumn}2");
+        $sheet->mergeCells("A3:{$lastColumn}3");
+
+        $sheet->setCellValue('A1', $title);
+        $sheet->setCellValue('A2', 'KEGIATAN USAHA BISNIS DAN KOMERSIAL UNIVERSITAS DIPONEGORO');
+        $sheet->setCellValue('A3', 'PADA UPKAB BP UBIKAR');
+
+        $sheet->getStyle("A1:{$lastColumn}3")
+            ->getAlignment()
+            ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        $sheet->getStyle("A1:{$lastColumn}1")->getFont()->setBold(true)->setSize(12);
+        $sheet->getStyle("A2:{$lastColumn}2")->getFont()->setBold(true)->setSize(9);
+        $sheet->getStyle("A3:{$lastColumn}3")->getFont()->setBold(true)->setSize(9);
+
+        $sheet->getRowDimension(1)->setRowHeight(18);
+        $sheet->getRowDimension(2)->setRowHeight(16);
+        $sheet->getRowDimension(3)->setRowHeight(16);
+        $sheet->getRowDimension(4)->setRowHeight(6);
+    }
+}
+
+class RevenueInvoiceSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize, WithEvents, WithCustomStartCell
+{
+    use HasReportHeader;
+
     private string $granularity;
     private ?int $month;
     private ?int $year;
-    private ?int $incomeTypeId;
-    private ?int $classId;
+    private ?string $incomeTypeId;
+    private ?string $classId;
     private string $status;
-    private ?int $academicYearId;
+    private ?string $academicYearId;
 
     public function __construct(
         string $granularity, 
         ?int $month, 
         ?int $year,
-        ?int $incomeTypeId = null,
-        ?int $classId = null,
+        ?string $incomeTypeId = null,
+        ?string $classId = null,
         string $status = 'all',
-        ?int $academicYearId = null
+        ?string $academicYearId = null
     ) {
         $this->granularity = $granularity;
         $this->month = $month;
@@ -227,26 +263,42 @@ class RevenueInvoiceSheet implements FromArray, WithHeadings, WithTitle, WithCol
     {
         return 'Pendapatan';
     }
+
+    public function startCell(): string
+    {
+        return 'A6';
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function (AfterSheet $event) {
+                $this->applyReportHeader($event, $this->title(), 'G');
+            },
+        ];
+    }
 }
 
-class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
+class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize, WithEvents, WithCustomStartCell
 {
+    use HasReportHeader;
+
     private string $granularity;
     private ?int $month;
     private ?int $year;
-    private ?int $incomeTypeId;
-    private ?int $classId;
+    private ?string $incomeTypeId;
+    private ?string $classId;
     private string $status;
-    private ?int $academicYearId;
+    private ?string $academicYearId;
 
     public function __construct(
         string $granularity, 
         ?int $month, 
         ?int $year,
-        ?int $incomeTypeId = null,
-        ?int $classId = null,
+        ?string $incomeTypeId = null,
+        ?string $classId = null,
         string $status = 'all',
-        ?int $academicYearId = null
+        ?string $academicYearId = null
     ) {
         $this->granularity = $granularity;
         $this->month = $month;
@@ -373,10 +425,26 @@ class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColu
     {
         return 'Penerimaan';
     }
+
+    public function startCell(): string
+    {
+        return 'A6';
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function (AfterSheet $event) {
+                $this->applyReportHeader($event, $this->title(), 'H');
+            },
+        ];
+    }
 }
 
-class SummarySheet implements FromArray, WithHeadings, WithTitle, ShouldAutoSize
+class SummarySheet implements FromArray, WithHeadings, WithTitle, ShouldAutoSize, WithEvents, WithCustomStartCell
 {
+    use HasReportHeader;
+
     private array $summary;
 
     public function __construct(array $summary)
@@ -403,10 +471,26 @@ class SummarySheet implements FromArray, WithHeadings, WithTitle, ShouldAutoSize
     {
         return 'Ringkasan';
     }
+
+    public function startCell(): string
+    {
+        return 'A6';
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function (AfterSheet $event) {
+                $this->applyReportHeader($event, $this->title(), 'B');
+            },
+        ];
+    }
 }
 
-class MonthlyTransactionSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
+class MonthlyTransactionSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize, WithEvents, WithCustomStartCell
 {
+    use HasReportHeader;
+
     private ?int $year;
 
     public function __construct(?int $year)
@@ -533,6 +617,20 @@ class MonthlyTransactionSheet implements FromArray, WithHeadings, WithTitle, Wit
         return 'Transaksi Bulanan';
     }
 
+    public function startCell(): string
+    {
+        return 'A6';
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function (AfterSheet $event) {
+                $this->applyReportHeader($event, $this->title(), 'K');
+            },
+        ];
+    }
+
     private function getMonthName(int $month): string
     {
         return [
@@ -554,8 +652,10 @@ class MonthlyTransactionSheet implements FromArray, WithHeadings, WithTitle, Wit
     }
 }
 
-class CollectionByClassSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
+class CollectionByClassSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize, WithEvents, WithCustomStartCell
 {
+    use HasReportHeader;
+
     private array $rows;
 
     public function __construct(array $rows)
@@ -605,10 +705,26 @@ class CollectionByClassSheet implements FromArray, WithHeadings, WithTitle, With
     {
         return 'Rekap Kelas';
     }
+
+    public function startCell(): string
+    {
+        return 'A6';
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function (AfterSheet $event) {
+                $this->applyReportHeader($event, $this->title(), 'E');
+            },
+        ];
+    }
 }
 
-class StudentRecapSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
+class StudentRecapSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize, WithEvents, WithCustomStartCell
 {
+    use HasReportHeader;
+
     private string $granularity;
     private ?int $month;
     private ?int $year;
@@ -709,6 +825,20 @@ class StudentRecapSheet implements FromArray, WithHeadings, WithTitle, WithColum
         return 'Rekap Siswa';
     }
 
+    public function startCell(): string
+    {
+        return 'A6';
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function (AfterSheet $event) {
+                $this->applyReportHeader($event, $this->title(), 'G');
+            },
+        ];
+    }
+
     private function buildReceiptQuery()
     {
         $query = DB::table('receipts')
@@ -754,8 +884,10 @@ class StudentRecapSheet implements FromArray, WithHeadings, WithTitle, WithColum
     }
 }
 
-class ComprehensiveDetailSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
+class ComprehensiveDetailSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize, WithEvents, WithCustomStartCell
 {
+    use HasReportHeader;
+
     private string $granularity;
     private ?int $month;
     private ?int $year;
@@ -860,6 +992,20 @@ class ComprehensiveDetailSheet implements FromArray, WithHeadings, WithTitle, Wi
     public function title(): string
     {
         return 'Detail Lengkap';
+    }
+
+    public function startCell(): string
+    {
+        return 'A6';
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function (AfterSheet $event) {
+                $this->applyReportHeader($event, $this->title(), 'Q');
+            },
+        ];
     }
 
     private function buildQuery()
