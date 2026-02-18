@@ -21,6 +21,10 @@ class FinancialReportExport implements WithMultipleSheets
     private array $reportRows;
     private array $incomeSources;
     private array $collectionByClass;
+    private ?int $incomeTypeId;
+    private ?int $classId;
+    private string $status;
+    private ?int $academicYearId;
 
     public function __construct(
         string $granularity,
@@ -29,7 +33,11 @@ class FinancialReportExport implements WithMultipleSheets
         array $summary,
         array $reportRows,
         array $incomeSources,
-        array $collectionByClass
+        array $collectionByClass,
+        ?int $incomeTypeId = null,
+        ?int $classId = null,
+        string $status = 'all',
+        ?int $academicYearId = null
     ) {
         $this->granularity = $granularity;
         $this->month = $month;
@@ -38,11 +46,33 @@ class FinancialReportExport implements WithMultipleSheets
         $this->reportRows = $reportRows;
         $this->incomeSources = $incomeSources;
         $this->collectionByClass = $collectionByClass;
+        $this->incomeTypeId = $incomeTypeId;
+        $this->classId = $classId;
+        $this->status = $status;
+        $this->academicYearId = $academicYearId;
     }
 
     public function sheets(): array
     {
         $sheets = [
+            new RevenueInvoiceSheet(
+                $this->granularity, 
+                $this->month, 
+                $this->year,
+                $this->incomeTypeId,
+                $this->classId,
+                $this->status,
+                $this->academicYearId
+            ),
+            new ReceiptReportSheet(
+                $this->granularity, 
+                $this->month, 
+                $this->year,
+                $this->incomeTypeId,
+                $this->classId,
+                $this->status,
+                $this->academicYearId
+            ),
             new SummarySheet($this->summary),
         ];
 
@@ -59,6 +89,289 @@ class FinancialReportExport implements WithMultipleSheets
         $sheets[] = new ComprehensiveDetailSheet($this->granularity, $this->month, $this->year);
 
         return $sheets;
+    }
+}
+
+class RevenueInvoiceSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
+{
+    private string $granularity;
+    private ?int $month;
+    private ?int $year;
+    private ?int $incomeTypeId;
+    private ?int $classId;
+    private string $status;
+    private ?int $academicYearId;
+
+    public function __construct(
+        string $granularity, 
+        ?int $month, 
+        ?int $year,
+        ?int $incomeTypeId = null,
+        ?int $classId = null,
+        string $status = 'all',
+        ?int $academicYearId = null
+    ) {
+        $this->granularity = $granularity;
+        $this->month = $month;
+        $this->year = $year;
+        $this->incomeTypeId = $incomeTypeId;
+        $this->classId = $classId;
+        $this->status = $status;
+        $this->academicYearId = $academicYearId;
+    }
+
+    public function headings(): array
+    {
+        return [
+            'No',
+            'Tanggal Invoice',
+            'Nomor Invoice',
+            'Pelanggan',
+            'Jatuh Tempo',
+            'Nominal',
+            'Deskripsi',
+        ];
+    }
+
+    public function array(): array
+    {
+        $query = DB::table('invoices')
+            ->join('students', 'invoices.student_id', '=', 'students.id')
+            ->leftJoin('invoice_items', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->leftJoin('tariffs', 'invoice_items.tariff_id', '=', 'tariffs.id')
+            ->leftJoin('student_class_histories as sch', function($join) {
+                $join->on('students.id', '=', 'sch.student_id')
+                    ->where('sch.is_active', true);
+            })
+            ->select([
+                'invoices.issued_at',
+                'invoices.invoice_number',
+                'students.name as student_name',
+                'invoices.due_date',
+                'invoices.total_amount',
+                DB::raw("GROUP_CONCAT(DISTINCT invoice_items.description SEPARATOR '; ') as description"),
+                DB::raw("GROUP_CONCAT(DISTINCT tariffs.income_type_id) as income_type_ids"),
+            ])
+            ->groupBy(
+                'invoices.id',
+                'invoices.issued_at',
+                'invoices.invoice_number',
+                'students.name',
+                'invoices.due_date',
+                'invoices.total_amount'
+            )
+            ->orderBy('invoices.issued_at');
+
+        if ($this->granularity === 'monthly') {
+            $query->whereYear('invoices.issued_at', $this->year);
+            if (! empty($this->month)) {
+                $query->whereMonth('invoices.issued_at', $this->month);
+            }
+        } else {
+            if (! empty($this->year)) {
+                $query->whereYear('invoices.issued_at', $this->year);
+            }
+        }
+        
+        if ($this->academicYearId) {
+            $query->where('invoices.academic_year_id', $this->academicYearId);
+        }
+        
+        if ($this->classId) {
+            $query->where('sch.class_id', $this->classId);
+        }
+        
+        if ($this->status !== 'all') {
+            $query->where('invoices.status', $this->status);
+        }
+
+        $rows = $query->get();
+        
+        // Filter by income type if set
+        if ($this->incomeTypeId) {
+            $rows = $rows->filter(function($row) {
+                if (!$row->income_type_ids) return false;
+                $typeIds = explode(',', $row->income_type_ids);
+                return in_array($this->incomeTypeId, $typeIds);
+            });
+        }
+
+        $data = [];
+        $index = 1;
+        foreach ($rows as $row) {
+            $data[] = [
+                $index,
+                $row->issued_at ? Carbon::parse($row->issued_at) : null,
+                $row->invoice_number,
+                $row->student_name,
+                $row->due_date ? Carbon::parse($row->due_date) : null,
+                (float) $row->total_amount,
+                $row->description ?: '-',
+            ];
+            $index++;
+        }
+
+        return $data;
+    }
+
+    public function columnFormats(): array
+    {
+        return [
+            'B' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
+            'E' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
+            'F' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+        ];
+    }
+
+    public function title(): string
+    {
+        return 'Pendapatan';
+    }
+}
+
+class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize
+{
+    private string $granularity;
+    private ?int $month;
+    private ?int $year;
+    private ?int $incomeTypeId;
+    private ?int $classId;
+    private string $status;
+    private ?int $academicYearId;
+
+    public function __construct(
+        string $granularity, 
+        ?int $month, 
+        ?int $year,
+        ?int $incomeTypeId = null,
+        ?int $classId = null,
+        string $status = 'all',
+        ?int $academicYearId = null
+    ) {
+        $this->granularity = $granularity;
+        $this->month = $month;
+        $this->year = $year;
+        $this->incomeTypeId = $incomeTypeId;
+        $this->classId = $classId;
+        $this->status = $status;
+        $this->academicYearId = $academicYearId;
+    }
+
+    public function headings(): array
+    {
+        return [
+            'No',
+            'Tanggal Kuitansi',
+            'Nomor Kuitansi',
+            'Pelanggan',
+            'Nilai Tagihan',
+            'Pembayaran',
+            'Deskripsi',
+            'Keterangan',
+        ];
+    }
+
+    public function array(): array
+    {
+        $query = DB::table('receipts')
+            ->join('invoices', 'receipts.invoice_id', '=', 'invoices.id')
+            ->join('students', 'invoices.student_id', '=', 'students.id')
+            ->leftJoin('invoice_items', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->leftJoin('tariffs', 'invoice_items.tariff_id', '=', 'tariffs.id')
+            ->leftJoin('student_class_histories as sch', function($join) {
+                $join->on('students.id', '=', 'sch.student_id')
+                    ->where('sch.is_active', true);
+            })
+            ->select([
+                'receipts.payment_date',
+                'receipts.receipt_number',
+                'students.name as student_name',
+                'invoices.total_amount',
+                'invoices.status as invoice_status',
+                'receipts.amount_paid',
+                DB::raw("GROUP_CONCAT(DISTINCT invoice_items.description SEPARATOR '; ') as description"),
+                DB::raw("GROUP_CONCAT(DISTINCT tariffs.income_type_id) as income_type_ids"),
+            ])
+            ->groupBy(
+                'receipts.id',
+                'receipts.payment_date',
+                'receipts.receipt_number',
+                'students.name',
+                'invoices.total_amount',
+                'invoices.status',
+                'receipts.amount_paid'
+            )
+            ->orderBy('receipts.payment_date');
+
+        if ($this->granularity === 'monthly') {
+            $query->whereYear('receipts.payment_date', $this->year);
+            if (! empty($this->month)) {
+                $query->whereMonth('receipts.payment_date', $this->month);
+            }
+        } else {
+            if (! empty($this->year)) {
+                $query->whereYear('receipts.payment_date', $this->year);
+            }
+        }
+        
+        if ($this->academicYearId) {
+            $query->where('invoices.academic_year_id', $this->academicYearId);
+        }
+        
+        if ($this->classId) {
+            $query->where('sch.class_id', $this->classId);
+        }
+        
+        if ($this->status !== 'all') {
+            $query->where('invoices.status', $this->status);
+        }
+
+        $rows = $query->get();
+        
+        // Filter by income type if set
+        if ($this->incomeTypeId) {
+            $rows = $rows->filter(function($row) {
+                if (!$row->income_type_ids) return false;
+                $typeIds = explode(',', $row->income_type_ids);
+                return in_array($this->incomeTypeId, $typeIds);
+            });
+        }
+
+        $data = [];
+        $index = 1;
+        foreach ($rows as $row) {
+            $totalAmount = (float) $row->total_amount;
+            $paidAmount = (float) $row->amount_paid;
+            $status = $paidAmount >= $totalAmount ? 'Lunas' : ($paidAmount > 0 ? 'Kurang bayar' : 'Belum bayar');
+
+            $data[] = [
+                $index,
+                $row->payment_date ? Carbon::parse($row->payment_date) : null,
+                $row->receipt_number,
+                $row->student_name,
+                $totalAmount,
+                $paidAmount,
+                $row->description ?: '-',
+                $status,
+            ];
+            $index++;
+        }
+
+        return $data;
+    }
+
+    public function columnFormats(): array
+    {
+        return [
+            'B' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
+            'E' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+            'F' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+        ];
+    }
+
+    public function title(): string
+    {
+        return 'Penerimaan';
     }
 }
 

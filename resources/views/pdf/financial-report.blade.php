@@ -2,332 +2,310 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Keuangan - PAUD UNDIP</title>
+    <title>Laporan Pendapatan dan Penerimaan</title>
     @include('partials.payment-styles')
     <style>
-        /* Override untuk landscape dan financial report styling */
         @page { size: A4 landscape; margin: 10mm; }
-        body.payment-doc { font-size: 9px; line-height: 1.3; }
-        
-        /* Header Customization */
-        .report-header { text-align: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #1e40af; }
-        .report-header h1 { font-size: 16px; color: #1e40af; margin: 0 0 2px 0; font-weight: 700; }
-        .report-header h2 { font-size: 10px; color: #6b7280; font-weight: 400; margin: 0 0 5px 0; }
-        .payment-badge { display: inline-block; background: #dbeafe; padding: 2px 8px; border-radius: 3px; color: #1e40af; font-weight: 600; font-size: 8px; margin: 4px 0; }
-        .report-meta { font-size: 8px; color: #6b7280; margin-top: 5px; }
-        
-        /* Summary Grid - 4 columns */
-        .summary-grid { display: table; width: 100%; margin: 8px 0; border-collapse: separate; border-spacing: 3px; }
-        .summary-cell { display: table-cell; padding: 6px; border: 1px solid #e5e7eb; background: #f9fafb; width: 25%; vertical-align: top; }
-        .summary-cell .label { font-size: 7px; color: #6b7280; text-transform: uppercase; margin-bottom: 2px; font-weight: 600; display: block; }
-        .summary-cell .value { font-size: 11px; font-weight: 700; color: #111827; display: block; margin-bottom: 2px; }
-        .summary-cell .sub { font-size: 7px; color: #6b7280; display: block; }
-        
-        /* Two Column Layout */
-        .two-col { width: 100%; margin-bottom: 8px; }
-        .two-col:after { content: ""; display: table; clear: both; }
-        .col { width: 49%; float: left; }
-        .col:first-child { margin-right: 2%; }
-        
-        /* Section Styling */
-        .section { margin-bottom: 8px; }
-        .section-title { font-size: 9px; font-weight: 700; color: #1e40af; margin-bottom: 4px; padding-bottom: 2px; border-bottom: 1px solid #cbd5e1; }
-        
-        /* Table Overrides for Financial Report */
-        table.compact { font-size: 8px; }
-        table.compact th { padding: 4px; font-size: 8px; background: #f1f5f9; }
-        table.compact td { padding: 4px; font-size: 8px; }
-        table.compact tr:nth-child(even) { background: #f9fafb; }
-        
-        /* Badges */
-        .badge-sm { display: inline-block; padding: 1px 4px; background: #dbeafe; color: #1e40af; font-weight: 600; font-size: 7px; border-radius: 2px; }
-        
-        /* Rank Badges */
-        .rank-badge { display: inline-block; width: 14px; height: 14px; line-height: 14px; text-align: center; border-radius: 50%; font-weight: 700; color: white; font-size: 7px; margin-right: 3px; }
-        .rank-1 { background: #eab308; }
-        .rank-2 { background: #9ca3af; }
-        .rank-3 { background: #f97316; }
-        .rank-other { background: #3b82f6; }
-        
-        /* Footer */
-        .report-footer { margin-top: 12px; padding-top: 8px; border-top: 1px solid #cbd5e1; text-align: center; font-size: 7px; color: #6b7280; }
-        .report-footer strong { color: #111827; }
-        
-        /* Mini stats boxes */
-        .mini-stat { border: 1px solid #e5e7eb; padding: 4px 6px; background: #fafafa; margin-bottom: 3px; }
-        .mini-stat .label { font-size: 7px; color: #6b7280; }
-        .mini-stat .value { font-size: 9px; font-weight: 700; color: #111827; }
-        
-        .text-red { color: #dc2626; }
-        .text-green { color: #16a34a; }
+        body { font-size: 9px; line-height: 1.3; color: #000; }
+        table { width: 100%; border-collapse: collapse; }
+        .header-table td { vertical-align: middle; }
+        .title { font-size: 12px; font-weight: 700; text-align: center; }
+        .subtitle { font-size: 9px; font-weight: 600; text-align: center; }
+        .logo { width: 60px; }
+        .filter-table td { padding: 2px 4px; }
+        .label { font-weight: 700; width: 120px; }
+        .separator { width: 10px; text-align: center; }
+        .data-table th,
+        .data-table td { border: 1px solid #000; padding: 4px; }
+        .data-table th { background: #e6e6e6; text-align: center; font-weight: 700; }
+        .data-table td { vertical-align: top; }
+        .col-number th { font-weight: 600; font-size: 8px; }
+        .total-row td { font-weight: 700; background: #e6e6e6; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .signature { margin-top: 18px; }
+        .signature td { padding: 2px 4px; }
+        .signature .title { font-size: 9px; font-weight: 700; text-align: left; }
+        .signature .name { padding-top: 24px; font-weight: 700; }
+        .page-break { page-break-after: always; }
     </style>
 </head>
-<body class="payment-doc">
+<body>
+@php
+    $logoFile = public_path('images/LOGO-PAUD-PERMATA.png');
+    if (!file_exists($logoFile)) {
+        $logoFile = public_path('images/logo.png');
+    }
+@endphp
 
-<div class="report-header">
-    <table width="100%">
+<div class="report-block">
+    <table class="header-table">
         <tr>
-            <td width="20%" style="text-align: left; vertical-align: middle;">
-                @php
-                    $logoFile = public_path('images/LOGO-PAUD-PERMATA.png');
-                    if (!file_exists($logoFile)) {
-                        $logoFile = public_path('images/logo.png');
-                    }
-                @endphp
+            <td class="logo" style="text-align: left;">
                 @if(file_exists($logoFile))
                     <img src="{{ $logoFile }}" alt="logo" style="width:50px; height:auto;" />
                 @endif
             </td>
-            <td width="60%" style="text-align: center; vertical-align: middle;">
-                <h1>LAPORAN KEUANGAN</h1>
-                <h2>{{ strtoupper(config('app.name', 'PAUD UNDIP')) }}</h2>
-                <div class="payment-badge">Sistem Pembayaran: Virtual Account BNI</div>
-                <div class="report-meta">
-                    <strong>Periode:</strong> 
-                    @if($granularity === 'monthly')
-                        {{ \DateTime::createFromFormat('!m', $month)->format('F') }} {{ $year }}
-                    @else
-                        Tahun {{ $year }}
-                    @endif
-                    | <strong>Dicetak:</strong> {{ $generatedAt->format('d F Y, H:i') }} WIB
-                </div>
+            <td>
+                <div class="title">LAPORAN PENDAPATAN (REVENUE REPORT)</div>
+                <div class="subtitle">KEGIATAN USAHA BISNIS DAN KOMERSIAL UNIVERSITAS DIPONEGORO</div>
+                <div class="subtitle">PADA UPKAB BP UBIKAR</div>
             </td>
-            <td width="20%"></td>
+            <td class="logo"></td>
         </tr>
     </table>
-</div>
 
-<!-- Summary Stats -->
-<div class="summary-grid">
-    <div class="summary-cell">
-        <span class="label">Total Pembayaran</span>
-        <span class="value">Rp {{ number_format($currentPeriodTotal, 0, ',', '.') }}</span>
-        <span class="sub {{ $periodChangePercent >= 0 ? 'text-green' : 'text-red' }}">
-            {{ $periodChangePercent >= 0 ? '↗' : '↘' }} {{ number_format(abs($periodChangePercent), 1) }}% vs periode lalu
-        </span>
-    </div>
-    <div class="summary-cell">
-        <span class="label">Total Tagihan</span>
-        <span class="value">Rp {{ number_format($totalInvoiced, 0, ',', '.') }}</span>
-        <span class="sub">Tingkat Koleksi: {{ number_format($collectionRate, 1) }}%</span>
-    </div>
-    <div class="summary-cell">
-        <span class="label">Tunggakan</span>
-        <span class="value text-red">Rp {{ number_format($totalOutstanding, 0, ',', '.') }}</span>
-        <span class="sub">{{ $totalInvoiced > 0 ? number_format(($totalOutstanding / $totalInvoiced) * 100, 1) : 0 }}% dari total tagihan</span>
-    </div>
-    <div class="summary-cell">
-        <span class="label">Total Diskon</span>
-        <span class="value">Rp {{ number_format($totalDiscounts, 0, ',', '.') }}</span>
-        <span class="sub">Potongan harga yang diberikan</span>
-    </div>
-</div>
-
-<!-- Secondary Stats -->
-<div style="margin-bottom: 8px;">
-    <table width="100%" cellpadding="0" cellspacing="3">
+    <table class="filter-table" style="margin-top: 6px;">
         <tr>
-            <td width="33%" valign="top">
-                <div class="mini-stat">
-                    <div class="label">Rata-rata Transaksi</div>
-                    <div class="value">Rp {{ number_format($averageTransactionValue, 0, ',', '.') }}</div>
-                </div>
-            </td>
-            <td width="33%" valign="top">
-                <div class="mini-stat">
-                    <div class="label">Total Transaksi</div>
-                    <div class="value">{{ number_format($transactionCount, 0, ',', '.') }}</div>
-                </div>
-            </td>
-            <td width="33%" valign="top">
-                <div class="mini-stat">
-                    <div class="label">Periode Sebelumnya</div>
-                    <div class="value">Rp {{ number_format($previousPeriodTotal, 0, ',', '.') }}</div>
-                </div>
-            </td>
+            <td class="label">Unit Usaha</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['unit_usaha'] ?? '-' }}</td>
+            <td class="label">Status</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['status'] ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Jenis Pendapatan</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['jenis_pendapatan'] ?? '-' }}</td>
+            <td class="label">Tahun Anggaran</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['tahun_anggaran'] ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Kategori</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['kategori'] ?? '-' }}</td>
+            <td class="label">Tanggal Cetak</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['tanggal_cetak'] ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Kelas</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['kelas'] ?? '-' }}</td>
+            <td class="label">Bendahara</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['bendahara'] ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Periode Transaksi</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['periode_transaksi'] ?? '-' }}</td>
+            <td></td>
+            <td></td>
+            <td></td>
         </tr>
     </table>
-</div>
 
-<!-- Two Column Layout -->
-<div class="two-col">
-    <div class="col">
-        <div class="section">
-            <div class="section-title">Laporan Agregat</div>
-            <table class="compact" width="100%">
-                <thead>
-                    <tr>
-                        <th>Periode</th>
-                        <th style="text-align: center;">Transaksi</th>
-                        <th style="text-align: right;">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($reportRows as $row)
-                        <tr>
-                            <td>
-                                @if($row['month'])
-                                    {{ \DateTime::createFromFormat('!m', $row['month'])->format('M') }} {{ $row['year'] }}
-                                @else
-                                    {{ $row['year'] }}
-                                @endif
-                            </td>
-                            <td style="text-align: center;"><span class="badge-sm">{{ $row['count'] }}</span></td>
-                            <td style="text-align: right;"><strong>Rp {{ number_format($row['total_amount'], 0, ',', '.') }}</strong></td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="3" style="text-align: center; padding: 8px; color: #6b7280;">Tidak ada data</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="col">
-        <div class="section">
-            <div class="section-title">Sumber Pemasukan</div>
-            <table class="compact" width="100%">
-                <thead>
-                    <tr>
-                        <th>Sumber</th>
-                        <th style="text-align: center;">Item</th>
-                        <th style="text-align: right;">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @php $grandTotal = array_sum(array_column($incomeSources, 'total_amount') ?: [0]); @endphp
-                    @forelse($incomeSources as $source)
-                        @php $percentage = $grandTotal > 0 ? ($source['total_amount'] / $grandTotal) * 100 : 0; @endphp
-                        <tr>
-                            <td>
-                                <strong>{{ $source['income_type'] }}</strong><br>
-                                <span style="font-size: 7px; color: #6b7280;">{{ number_format($percentage, 1) }}%</span>
-                            </td>
-                            <td style="text-align: center;"><span class="badge-sm">{{ $source['items_count'] }}</span></td>
-                            <td style="text-align: right;">Rp {{ number_format($source['total_amount'], 0, ',', '.') }}</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="3" style="text-align: center; padding: 8px; color: #6b7280;">Tidak ada data</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-                @if(count($incomeSources) > 0)
-                <tfoot style="background: #e5e7eb;">
-                    <tr>
-                        <th>TOTAL</th>
-                        <th style="text-align: center;">{{ array_sum(array_column($incomeSources, 'items_count')) }}</th>
-                        <th style="text-align: right;">Rp {{ number_format($grandTotal, 0, ',', '.') }}</th>
-                    </tr>
-                </tfoot>
-                @endif
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- Collection by Class -->
-@if(!empty($collectionByClass) && count($collectionByClass) > 0)
-<div class="section">
-    <div class="section-title">Ringkasan Koleksi per Kelas</div>
-    <table class="compact" width="100%">
+    <table class="data-table" style="margin-top: 8px;">
         <thead>
             <tr>
-                <th>Kelas</th>
-                <th style="width: 100px; text-align: right;">Total Tagihan</th>
-                <th style="width: 100px; text-align: right;">Pembayaran</th>
-                <th style="width: 80px; text-align: right;">Tunggakan</th>
-                <th style="width: 80px; text-align: center;">Koleksi %</th>
+                <th style="width: 4%;">No</th>
+                <th style="width: 12%;">Tanggal Invoice</th>
+                <th style="width: 16%;">Nomor Invoice</th>
+                <th style="width: 18%;">Pelanggan</th>
+                <th style="width: 12%;">Jatuh Tempo</th>
+                <th style="width: 12%;">Nominal</th>
+                <th>Deskripsi</th>
+            </tr>
+            <tr class="col-number">
+                <th>1</th>
+                <th>2</th>
+                <th>3</th>
+                <th>4</th>
+                <th>5</th>
+                <th>6</th>
+                <th>7</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($collectionByClass as $class)
+            @forelse($revenueRows as $index => $row)
                 <tr>
-                    <td><strong>{{ $class['class_name'] }}</strong></td>
-                    <td style="text-align: right;">Rp {{ number_format($class['total_invoiced'], 0, ',', '.') }}</td>
-                    <td style="text-align: right;"><strong>Rp {{ number_format($class['total_paid'], 0, ',', '.') }}</strong></td>
-                    <td style="text-align: right;">Rp {{ number_format($class['outstanding'], 0, ',', '.') }}</td>
-                    <td style="text-align: center; font-weight: 700;">
-                        <span class="badge-sm" style="
-                            @switch(true)
-                                @case($class['collection_rate'] >= 85)
-                                    background: #dcfce7; color: #166534;
-                                    @break
-                                @case($class['collection_rate'] >= 70)
-                                    background: #fef3c7; color: #92400e;
-                                    @break
-                                @default
-                                    background: #fee2e2; color: #991b1b;
-                            @endswitch
-                        ">
-                            {{ number_format($class['collection_rate'], 1) }}%
-                        </span>
+                    <td class="text-center">{{ $index + 1 }}</td>
+                    <td class="text-center">
+                        {{ $row['tanggal_invoice'] ? \Illuminate\Support\Carbon::parse($row['tanggal_invoice'])->format('d/m/Y') : '-' }}
                     </td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-</div>
-@endif
-
-<!-- Monthly Transaction Summary (untuk laporan tahunan) -->
-@if($granularity === 'yearly')
-<div class="section">
-    <div class="section-title">Ringkasan Transaksi Bulanan Tahun {{ $year }}</div>
-    <table class="compact" width="100%">
-        <thead>
-            <tr>
-                <th>Bulan</th>
-                <th style="text-align: center;">Jumlah Transaksi</th>
-                <th style="text-align: right;">Total Pembayaran</th>
-            </tr>
-        </thead>
-        <tbody>
-            @php
-                $monthlyTotals = [];
-                foreach($reportRows as $row) {
-                    if(!isset($monthlyTotals[$row['month']])) {
-                        $monthlyTotals[$row['month']] = ['count' => 0, 'total' => 0];
-                    }
-                    $monthlyTotals[$row['month']]['count'] += $row['count'];
-                    $monthlyTotals[$row['month']]['total'] += $row['total_amount'];
-                }
-                ksort($monthlyTotals);
-                $monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-            @endphp
-            @forelse($monthlyTotals as $month => $data)
-                <tr>
-                    <td><strong>{{ $monthNames[$month - 1] ?? 'Unknown' }}</strong></td>
-                    <td style="text-align: center;"><span class="badge-sm">{{ $data['count'] }}</span></td>
-                    <td style="text-align: right;">Rp {{ number_format($data['total'], 0, ',', '.') }}</td>
+                    <td>{{ $row['nomor_invoice'] }}</td>
+                    <td>{{ $row['pelanggan'] }}</td>
+                    <td class="text-center">
+                        {{ $row['jatuh_tempo'] ? \Illuminate\Support\Carbon::parse($row['jatuh_tempo'])->format('d/m/Y') : '-' }}
+                    </td>
+                    <td class="text-right">{{ number_format($row['nominal'], 0, ',', '.') }}</td>
+                    <td>{{ $row['deskripsi'] }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="3" style="text-align: center; padding: 8px; color: #6b7280;">Tidak ada transaksi dalam tahun ini</td>
+                    <td colspan="7" class="text-center">Tidak ada data</td>
                 </tr>
             @endforelse
-        </tbody>
-        @if(count($monthlyTotals) > 0)
-        <tfoot style="background: #e5e7eb;">
-            <tr>
-                <th>TOTAL</th>
-                <th style="text-align: center;">{{ array_sum(array_column($monthlyTotals, 'count')) }}</th>
-                <th style="text-align: right;">Rp {{ number_format(array_sum(array_column($monthlyTotals, 'total')), 0, ',', '.') }}</th>
+            <tr class="total-row">
+                <td colspan="5" class="text-center">TOTAL</td>
+                <td class="text-right">{{ number_format($revenueTotal ?? 0, 0, ',', '.') }}</td>
+                <td></td>
             </tr>
-        </tfoot>
-        @endif
+        </tbody>
+    </table>
+
+    <table class="signature" style="width: 100%; margin-top: 16px;">
+        <tr>
+            <td style="width: 60%;"></td>
+            <td class="title">Kepala Unit Usaha</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>{{ $filters['unit_usaha'] ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td class="name">&nbsp;</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>Nama</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>NIP</td>
+        </tr>
     </table>
 </div>
-@endif
 
-<!-- Footer -->
-<div class="report-footer">
-    <p><strong>{{ strtoupper(config('app.name', 'PAUD UNDIP')) }}</strong> - Sistem Informasi Keuangan</p>
-    <p style="margin-top: 3px;">Laporan dihasilkan secara otomatis pada {{ $generatedAt->format('d F Y, H:i:s') }} WIB</p>
-    <p style="margin-top: 2px;">Pembayaran melalui Virtual Account BNI | Untuk informasi lebih lanjut hubungi bagian keuangan</p>
+<div class="page-break"></div>
+
+<div class="report-block">
+    <table class="header-table">
+        <tr>
+            <td class="logo" style="text-align: left;">
+                @if(file_exists($logoFile))
+                    <img src="{{ $logoFile }}" alt="logo" style="width:50px; height:auto;" />
+                @endif
+            </td>
+            <td>
+                <div class="title">LAPORAN PENERIMAAN (RECEIPT REPORT)</div>
+                <div class="subtitle">KEGIATAN USAHA BISNIS DAN KOMERSIAL UNIVERSITAS DIPONEGORO</div>
+                <div class="subtitle">PADA UPKAB BP UBIKAR</div>
+            </td>
+            <td class="logo"></td>
+        </tr>
+    </table>
+
+    <table class="filter-table" style="margin-top: 6px;">
+        <tr>
+            <td class="label">Unit Usaha</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['unit_usaha'] ?? '-' }}</td>
+            <td class="label">Status</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['status'] ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Jenis Pendapatan</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['jenis_pendapatan'] ?? '-' }}</td>
+            <td class="label">Tahun Anggaran</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['tahun_anggaran'] ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Kategori</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['kategori'] ?? '-' }}</td>
+            <td class="label">Tanggal Cetak</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['tanggal_cetak'] ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Kelas</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['kelas'] ?? '-' }}</td>
+            <td class="label">Bendahara</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['bendahara'] ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Periode Transaksi</td>
+            <td class="separator">:</td>
+            <td>{{ $filters['periode_transaksi'] ?? '-' }}</td>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+    </table>
+
+    <table class="data-table" style="margin-top: 8px;">
+        <thead>
+            <tr>
+                <th style="width: 4%;">No</th>
+                <th style="width: 12%;">Tanggal Kuitansi</th>
+                <th style="width: 16%;">Nomor Kuitansi</th>
+                <th style="width: 18%;">Pelanggan</th>
+                <th style="width: 12%;">Nilai Tagihan</th>
+                <th style="width: 12%;">Pembayaran</th>
+                <th style="width: 16%;">Deskripsi</th>
+                <th style="width: 10%;">Keterangan</th>
+            </tr>
+            <tr class="col-number">
+                <th>1</th>
+                <th>2</th>
+                <th>3</th>
+                <th>4</th>
+                <th>5</th>
+                <th>6</th>
+                <th>7</th>
+                <th>8</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($receiptRows as $index => $row)
+                <tr>
+                    <td class="text-center">{{ $index + 1 }}</td>
+                    <td class="text-center">
+                        {{ $row['tanggal_kuitansi'] ? \Illuminate\Support\Carbon::parse($row['tanggal_kuitansi'])->format('d/m/Y') : '-' }}
+                    </td>
+                    <td>{{ $row['nomor_kuitansi'] }}</td>
+                    <td>{{ $row['pelanggan'] }}</td>
+                    <td class="text-right">{{ number_format($row['nilai_tagihan'], 0, ',', '.') }}</td>
+                    <td class="text-right">{{ number_format($row['pembayaran'], 0, ',', '.') }}</td>
+                    <td>{{ $row['deskripsi'] }}</td>
+                    <td class="text-center">{{ $row['keterangan'] }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="8" class="text-center">Tidak ada data</td>
+                </tr>
+            @endforelse
+            <tr class="total-row">
+                <td colspan="4" class="text-center">TOTAL</td>
+                <td class="text-right">{{ number_format($receiptTotals['total_tagihan'] ?? 0, 0, ',', '.') }}</td>
+                <td class="text-right">{{ number_format($receiptTotals['total_pembayaran'] ?? 0, 0, ',', '.') }}</td>
+                <td colspan="2"></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table class="signature" style="width: 100%; margin-top: 16px;">
+        <tr>
+            <td style="width: 60%;"></td>
+            <td class="title">Kepala Unit Usaha</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>{{ $filters['unit_usaha'] ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td class="name">&nbsp;</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>Nama</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>NIP</td>
+        </tr>
+    </table>
 </div>
-
 </body>
 </html>
