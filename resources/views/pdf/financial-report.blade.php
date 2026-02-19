@@ -111,15 +111,6 @@
                 <th style="width: 12%;">Nominal</th>
                 <th>Deskripsi</th>
             </tr>
-            <tr class="col-number">
-                <th>1</th>
-                <th>2</th>
-                <th>3</th>
-                <th>4</th>
-                <th>5</th>
-                <th>6</th>
-                <th>7</th>
-            </tr>
         </thead>
         <tbody>
             @forelse($revenueRows as $index => $row)
@@ -149,28 +140,39 @@
         </tbody>
     </table>
 
-    <table class="signature" style="width: 100%; margin-top: 16px;">
-        <tr>
-            <td style="width: 60%;"></td>
-            <td class="title">Kepala Unit Usaha</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td>{{ $filters['unit_usaha'] ?? '-' }}</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td class="name">&nbsp;</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td>Nama</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td>NIP</td>
-        </tr>
-    </table>
+    <table class="signature" style="width:100%; margin-top:30px;">
+    <tr>
+        <td style="width:100%; text-align:right;">
+
+            <div style="
+                display:inline-block;
+                width:260px;
+                text-align:center;
+            ">
+
+                <div style="font-weight:700;">
+                    Kepala Unit Usaha
+                </div>
+
+                <div>
+                    {{ $filters['unit_usaha'] ?? '-' }}
+                </div>
+
+                <div style="height:70px;"></div>
+
+                <div style="font-weight:700;">
+                    Nama
+                </div>
+
+                <div>
+                    NIP
+                </div>
+
+            </div>
+
+        </td>
+    </tr>
+</table>
 </div>
 
 <div class="page-break"></div>
@@ -247,16 +249,6 @@
                 <th style="width: 16%;">Deskripsi</th>
                 <th style="width: 10%;">Keterangan</th>
             </tr>
-            <tr class="col-number">
-                <th>1</th>
-                <th>2</th>
-                <th>3</th>
-                <th>4</th>
-                <th>5</th>
-                <th>6</th>
-                <th>7</th>
-                <th>8</th>
-            </tr>
         </thead>
         <tbody>
             @forelse($receiptRows as $index => $row)
@@ -286,28 +278,39 @@
         </tbody>
     </table>
 
-    <table class="signature" style="width: 100%; margin-top: 16px;">
-        <tr>
-            <td style="width: 60%;"></td>
-            <td class="title">Kepala Unit Usaha</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td>{{ $filters['unit_usaha'] ?? '-' }}</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td class="name">&nbsp;</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td>Nama</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td>NIP</td>
-        </tr>
-    </table>
+   <table class="signature" style="width:100%; margin-top:30px;">
+    <tr>
+        <td style="width:100%; text-align:right;">
+
+            <div style="
+                display:inline-block;
+                width:260px;
+                text-align:center;
+            ">
+
+                <div style="font-weight:700;">
+                    Kepala Unit Usaha
+                </div>
+
+                <div>
+                    {{ $filters['unit_usaha'] ?? '-' }}
+                </div>
+
+                <div style="height:70px;"></div>
+
+                <div style="font-weight:700;">
+                    Nama
+                </div>
+
+                <div>
+                    NIP
+                </div>
+
+            </div>
+
+        </td>
+    </tr>
+</table>
 </div>
 </body>
 </html>
