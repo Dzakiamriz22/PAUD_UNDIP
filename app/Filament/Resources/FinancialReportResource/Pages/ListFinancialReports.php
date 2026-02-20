@@ -768,7 +768,9 @@ class ListFinancialReports extends ListRecords
                 'pelanggan' => $row->student_name,
                 'jatuh_tempo' => $row->due_date ? Carbon::parse($row->due_date) : null,
                 'nominal' => (float) $row->total_amount,
-                'deskripsi' => $row->description ?: '-',
+                'deskripsi' => $row->description
+                ? preg_replace('/\s*\(\d+-\d+\)/', '', $row->description)
+                : '-',
                 'status' => $row->status,
             ];
         })->values()->toArray();
@@ -861,7 +863,9 @@ class ListFinancialReports extends ListRecords
                 'pelanggan' => $row->student_name,
                 'nilai_tagihan' => $totalAmount,
                 'pembayaran' => $paidAmount,
-                'deskripsi' => $row->description ?: '-',
+                'deskripsi' => $row->description
+                ? preg_replace('/\s*\(\d+-\d+\)/', '', $row->description)
+                : '-',
                 'keterangan' => $status,
             ];
         })->values()->toArray();
