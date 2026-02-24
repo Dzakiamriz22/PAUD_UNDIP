@@ -188,7 +188,7 @@ class StudentResource extends Resource
                                     ->whereHas('academicYear', fn ($q) => $q->where('is_active', true))
                                     ->get()
                                     ->mapWithKeys(fn ($class) => [
-                                        $class->id => "{$class->code} ({$class->academicYear->label})"
+                                        $class->id => "{$class->code_label} ({$class->academicYear->label})"
                                     ])
                             )
                             ->required()
@@ -218,7 +218,7 @@ class StudentResource extends Resource
                                     ? 'Berhasil pindah kelas'
                                     : 'Berhasil assign kelas'
                             )
-                            ->body("Siswa {$record->name} sekarang berada di kelas {$class->code}")
+                            ->body("Siswa {$record->name} sekarang berada di kelas {$class->code_label}")
                             ->success()
                             ->send();
                     }),
@@ -242,7 +242,7 @@ class StudentResource extends Resource
                                     ->whereHas('academicYear', fn ($q) => $q->where('is_active', true))
                                     ->get()
                                     ->mapWithKeys(fn ($class) => [
-                                        $class->id => "{$class->code} ({$class->academicYear->label})"
+                                        $class->id => "{$class->code_label} ({$class->academicYear->label})"
                                     ])
                             )
                             ->required()

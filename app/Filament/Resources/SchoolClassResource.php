@@ -115,10 +115,12 @@ class SchoolClassResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\BadgeColumn::make('category')
-                    ->label('Kategori'),
+                    ->label('Kategori')
+                    ->formatStateUsing(fn ($state) => str_replace('_', ' ', (string) $state)),
 
                 Tables\Columns\TextColumn::make('code')
                     ->label('Kode')
+                    ->formatStateUsing(fn ($state) => str_replace('_', ' ', (string) $state))
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('homeroomTeacher.fullname')

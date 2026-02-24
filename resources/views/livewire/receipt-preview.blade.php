@@ -28,7 +28,7 @@
         </tr>
         <tr>
             <td>Kelas</td>
-            <td>: {{ optional(optional($receipt->invoice->student)->activeClass)->classRoom->category ?? '-' }}</td>
+            <td>: {{ optional(optional($receipt->invoice->student)->activeClass)->classRoom->category_label ?? '-' }}</td>
             <td>Tahun Ajaran</td>
             <td>: {{ optional($receipt->invoice->academicYear)->year ?? '-' }}</td>
         </tr>

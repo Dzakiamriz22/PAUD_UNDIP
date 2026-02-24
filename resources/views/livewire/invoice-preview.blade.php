@@ -31,7 +31,7 @@
             <td>Nama Siswa</td>
             <td>: {{ optional($invoice->student)->name ?? '-' }}</td>
             <td>Kelas</td>
-            <td>: {{ optional(optional($invoice->student)->activeClass)->classRoom->category ?? '-' }}</td>
+            <td>: {{ optional(optional($invoice->student)->activeClass)->classRoom->category_label ?? '-' }}</td>
         </tr>
         <tr>
             <td>Tahun Ajaran</td>

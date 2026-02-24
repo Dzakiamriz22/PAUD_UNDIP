@@ -67,7 +67,7 @@
                 </td>
                 <td style="width:40%; text-align:right;">
                     Tanggal : {{ $invoice->issued_at?->format('d-m-Y H:i:s') }}<br>
-                    Kelas   : {{ optional(optional($invoice->student)->activeClass)->classRoom->name ?? '-' }}
+                    Kelas   : {{ optional(optional($invoice->student)->activeClass)->classRoom->code_label ?? '-' }}
                 </td>
             </tr>
         </table>

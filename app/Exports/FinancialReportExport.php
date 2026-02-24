@@ -30,6 +30,7 @@ class FinancialReportExport implements WithMultipleSheets
     private ?string $classId;
     private string $status;
     private ?string $academicYearId;
+    private string $reportType;
 
     public function __construct(
         string $granularity,
@@ -42,7 +43,8 @@ class FinancialReportExport implements WithMultipleSheets
         ?string $incomeTypeId = null,
         ?string $classId = null,
         string $status = 'all',
-        ?string $academicYearId = null
+        ?string $academicYearId = null,
+        string $reportType = 'receipt'
     ) {
         $this->granularity = $granularity;
         $this->month = $month;
@@ -55,43 +57,40 @@ class FinancialReportExport implements WithMultipleSheets
         $this->classId = $classId;
         $this->status = $status;
         $this->academicYearId = $academicYearId;
+        $this->reportType = $reportType;
     }
 
     public function sheets(): array
     {
-        $sheets = [
-            new RevenueInvoiceSheet(
-                $this->granularity, 
-                $this->month, 
-                $this->year,
-                $this->incomeTypeId,
-                $this->classId,
-                $this->status,
-                $this->academicYearId
-            ),
-            new ReceiptReportSheet(
-                $this->granularity, 
-                $this->month, 
-                $this->year,
-                $this->incomeTypeId,
-                $this->classId,
-                $this->status,
-                $this->academicYearId
-            ),
-            new SummarySheet($this->summary),
-        ];
+        $sheets = [];
 
-        // For yearly reports, add monthly breakdown with transactions
-        if ($this->granularity === 'yearly') {
-            $sheets[] = new MonthlyTransactionSheet($this->year);
+        if ($this->reportType === 'revenue') {
+            $sheets[] = new RevenueInvoiceSheet(
+                $this->granularity,
+                $this->month,
+                $this->year,
+                $this->incomeTypeId,
+                $this->classId,
+                $this->status,
+                $this->academicYearId
+            );
+        } else {
+            $sheets[] = new ReceiptReportSheet(
+                $this->granularity,
+                $this->month,
+                $this->year,
+                $this->incomeTypeId,
+                $this->classId,
+                $this->status,
+                $this->academicYearId
+            );
         }
 
-        // Add class and student summaries
-        $sheets[] = new CollectionByClassSheet($this->collectionByClass);
-        $sheets[] = new StudentRecapSheet($this->granularity, $this->month, $this->year);
-        
-        // Add comprehensive detail sheet
-        $sheets[] = new ComprehensiveDetailSheet($this->granularity, $this->month, $this->year);
+        $sheets[] = new SummarySheet($this->summary);
+
+        if ($this->reportType !== 'revenue' && $this->granularity === 'yearly') {
+            $sheets[] = new MonthlyTransactionSheet($this->year);
+        }
 
         return $sheets;
     }
@@ -123,6 +122,14 @@ trait HasReportHeader
         $sheet->getRowDimension(2)->setRowHeight(16);
         $sheet->getRowDimension(3)->setRowHeight(16);
         $sheet->getRowDimension(4)->setRowHeight(6);
+    }
+}
+
+trait FormatsClassLabel
+{
+    protected function formatClassLabel(?string $value): string
+    {
+        return $value ? str_replace('_', ' ', $value) : '-';
     }
 }
 
@@ -162,7 +169,7 @@ class RevenueInvoiceSheet implements FromArray, WithHeadings, WithTitle, WithCol
             'No',
             'Tanggal Invoice',
             'Nomor Invoice',
-            'Pelanggan',
+            'Siswa',
             'Jatuh Tempo',
             'Nominal',
             'Deskripsi',
@@ -242,7 +249,7 @@ class RevenueInvoiceSheet implements FromArray, WithHeadings, WithTitle, WithCol
                 $row->student_name,
                 $row->due_date ? Carbon::parse($row->due_date) : null,
                 (float) $row->total_amount,
-                $row->description ?: '-',
+                $this->formatDescription($row->description),
             ];
             $index++;
         }
@@ -274,8 +281,29 @@ class RevenueInvoiceSheet implements FromArray, WithHeadings, WithTitle, WithCol
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $this->applyReportHeader($event, $this->title(), 'G');
+                $event->sheet->getDelegate()->getStyle('G:G')->getAlignment()->setWrapText(true);
             },
         ];
+    }
+
+    private function formatDescription(?string $description): string
+    {
+        if (!$description) {
+            return '-';
+        }
+
+        $items = array_values(array_filter(array_map('trim', explode(';', $description))));
+        if (empty($items)) {
+            return '-';
+        }
+
+        $items = array_map(function ($item) {
+            $item = preg_replace('/\s*\((\d+)\s*-\s*(\d+)\)\s*/', ' ', $item);
+            $item = str_replace('_', ' ', (string) $item);
+            return trim((string) $item);
+        }, $items);
+
+        return implode("\n", $items);
     }
 }
 
@@ -315,7 +343,8 @@ class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColu
             'No',
             'Tanggal Kuitansi',
             'Nomor Kuitansi',
-            'Pelanggan',
+            'Siswa',
+            'Kapan Dibayarkan',
             'Nilai Tagihan',
             'Pembayaran',
             'Deskripsi',
@@ -335,6 +364,7 @@ class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColu
                     ->where('sch.is_active', true);
             })
             ->select([
+                'receipts.created_at',
                 'receipts.payment_date',
                 'receipts.receipt_number',
                 'students.name as student_name',
@@ -346,6 +376,7 @@ class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColu
             ])
             ->groupBy(
                 'receipts.id',
+                'receipts.created_at',
                 'receipts.payment_date',
                 'receipts.receipt_number',
                 'students.name',
@@ -398,12 +429,13 @@ class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColu
 
             $data[] = [
                 $index,
-                $row->payment_date ? Carbon::parse($row->payment_date) : null,
+                $row->created_at ? Carbon::parse($row->created_at) : null,
                 $row->receipt_number,
                 $row->student_name,
+                $row->payment_date ? Carbon::parse($row->payment_date) : null,
                 $totalAmount,
                 $paidAmount,
-                $row->description ?: '-',
+                $this->formatDescription($row->description),
                 $status,
             ];
             $index++;
@@ -416,8 +448,9 @@ class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColu
     {
         return [
             'B' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
-            'E' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+            'E' => NumberFormat::FORMAT_DATE_YYYYMMDD2,
             'F' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
+            'G' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1,
         ];
     }
 
@@ -435,9 +468,30 @@ class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColu
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
-                $this->applyReportHeader($event, $this->title(), 'H');
+                $this->applyReportHeader($event, $this->title(), 'I');
+                $event->sheet->getDelegate()->getStyle('H:H')->getAlignment()->setWrapText(true);
             },
         ];
+    }
+
+    private function formatDescription(?string $description): string
+    {
+        if (!$description) {
+            return '-';
+        }
+
+        $items = array_values(array_filter(array_map('trim', explode(';', $description))));
+        if (empty($items)) {
+            return '-';
+        }
+
+        $items = array_map(function ($item) {
+            $item = preg_replace('/\s*\((\d+)\s*-\s*(\d+)\)\s*/', ' ', $item);
+            $item = str_replace('_', ' ', (string) $item);
+            return trim((string) $item);
+        }, $items);
+
+        return implode("\n", $items);
     }
 }
 
@@ -490,6 +544,7 @@ class SummarySheet implements FromArray, WithHeadings, WithTitle, ShouldAutoSize
 class MonthlyTransactionSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize, WithEvents, WithCustomStartCell
 {
     use HasReportHeader;
+    use FormatsClassLabel;
 
     private ?int $year;
 
@@ -575,7 +630,7 @@ class MonthlyTransactionSheet implements FromArray, WithHeadings, WithTitle, Wit
                         $tx->invoice_number,
                         $tx->name,
                         $tx->nis,
-                        $tx->code ?? '-',
+                        $this->formatClassLabel($tx->code),
                         $this->formatPaymentMethod($tx->payment_method),
                         (float) $tx->amount_paid,
                         Carbon::parse($tx->payment_date),
@@ -590,7 +645,7 @@ class MonthlyTransactionSheet implements FromArray, WithHeadings, WithTitle, Wit
                         $tx->invoice_number,
                         $tx->name,
                         $tx->nis,
-                        $tx->code ?? '-',
+                        $this->formatClassLabel($tx->code),
                         $this->formatPaymentMethod($tx->payment_method),
                         (float) $tx->amount_paid,
                         Carbon::parse($tx->payment_date),
@@ -655,6 +710,7 @@ class MonthlyTransactionSheet implements FromArray, WithHeadings, WithTitle, Wit
 class CollectionByClassSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize, WithEvents, WithCustomStartCell
 {
     use HasReportHeader;
+    use FormatsClassLabel;
 
     private array $rows;
 
@@ -680,7 +736,7 @@ class CollectionByClassSheet implements FromArray, WithHeadings, WithTitle, With
 
         foreach ($this->rows as $row) {
             $data[] = [
-                $row['class_name'],
+                $this->formatClassLabel($row['class_name']),
                 (float) $row['total_invoiced'],
                 (float) $row['total_paid'],
                 (float) $row['outstanding'],
@@ -724,6 +780,7 @@ class CollectionByClassSheet implements FromArray, WithHeadings, WithTitle, With
 class StudentRecapSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize, WithEvents, WithCustomStartCell
 {
     use HasReportHeader;
+    use FormatsClassLabel;
 
     private string $granularity;
     private ?int $month;
@@ -767,7 +824,7 @@ class StudentRecapSheet implements FromArray, WithHeadings, WithTitle, WithColum
             $rowsByStudent[$row->student_id] = [
                 'student_name' => $row->student_name,
                 'nis' => $row->nis,
-                'class_code' => $row->class_code ?? '-',
+                'class_code' => $this->formatClassLabel($row->class_code),
                 'total_invoiced' => (float) $row->total_invoiced,
                 'total_paid' => 0.0,
             ];
@@ -887,6 +944,7 @@ class StudentRecapSheet implements FromArray, WithHeadings, WithTitle, WithColum
 class ComprehensiveDetailSheet implements FromArray, WithHeadings, WithTitle, WithColumnFormatting, ShouldAutoSize, WithEvents, WithCustomStartCell
 {
     use HasReportHeader;
+    use FormatsClassLabel;
 
     private string $granularity;
     private ?int $month;
@@ -954,13 +1012,13 @@ class ComprehensiveDetailSheet implements FromArray, WithHeadings, WithTitle, Wi
             $data[] = [
                 $row->student_name,
                 $row->nis,
-                $row->class_code ?? '-',
+                $this->formatClassLabel($row->class_code),
                 $row->invoice_number,
                 $row->issued_at ? Carbon::parse($row->issued_at) : null,
                 $row->due_date ? Carbon::parse($row->due_date) : null,
                 $row->income_type ?? '-',
                 $this->formatBillingType($row->billing_type),
-                $row->description,
+                $row->description ? str_replace('_', ' ', (string) $row->description) : '-',
                 (float) ($row->final_amount ?? 0),
                 (float) ($row->sub_total ?? 0),
                 (float) ($row->discount_amount ?? 0),

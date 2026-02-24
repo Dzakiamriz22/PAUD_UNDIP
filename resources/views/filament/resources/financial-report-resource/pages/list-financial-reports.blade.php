@@ -16,7 +16,9 @@
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-5 border border-gray-200 dark:border-gray-700">
             <div class="flex items-center justify-between mb-3">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Laporan Keuangan</h1>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                        {{ $reportType === 'revenue' ? 'Laporan Pemasukan' : 'Laporan Penerimaan' }}
+                    </h1>
                     <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">PAUD UNDIP • Sistem Pembayaran Virtual Account BNI</p>
                 </div>
                 <div class="flex items-center gap-3 text-xs">
@@ -37,12 +39,21 @@
                     </svg>
                     <div class="text-xs text-blue-900 dark:text-blue-200">
                         <p class="font-semibold mb-1">Tentang Laporan Ini:</p>
-                        <ul class="space-y-0.5 list-disc list-inside">
-                            <li><strong>Pembayaran</strong> = jumlah yang sudah diterima dan tercatat dalam sistem</li>
-                            <li><strong>Total Tagihan</strong> = jumlah semua invoice yang diterbitkan</li>
-                            <li><strong>Tunggakan</strong> = tagihan yang belum dibayar</li>
-                            <li><strong>Tingkat Koleksi</strong> = persentase tagihan yang sudah terbayar</li>
-                        </ul>
+                        @if($reportType === 'revenue')
+                            <ul class="space-y-0.5 list-disc list-inside">
+                                <li><strong>Total Tagihan</strong> = jumlah seluruh invoice pada periode terpilih</li>
+                                <li><strong>Diskon</strong> = potongan yang diberikan pada invoice</li>
+                                <li><strong>Jumlah Invoice</strong> = total invoice yang diterbitkan</li>
+                                <li><strong>Rata-rata Tagihan</strong> = nilai tagihan rata-rata per invoice</li>
+                            </ul>
+                        @else
+                            <ul class="space-y-0.5 list-disc list-inside">
+                                <li><strong>Pembayaran</strong> = jumlah yang sudah diterima dan tercatat dalam sistem</li>
+                                <li><strong>Jumlah Transaksi</strong> = total transaksi pembayaran dalam periode</li>
+                                <li><strong>Rata-rata Transaksi</strong> = nilai rata-rata per transaksi pembayaran</li>
+                                <li><strong>Periode Sebelumnya</strong> = total pembayaran periode pembanding</li>
+                            </ul>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -52,7 +63,9 @@
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
             <div class="flex items-start justify-between mb-3">
                 <div>
-                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Filter Laporan Keuangan</h3>
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        Filter Laporan {{ $reportType === 'revenue' ? 'Pemasukan' : 'Penerimaan' }}
+                    </h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Filter data berdasarkan periode, jenis pendapatan, kelas, status, dan tahun anggaran</p>
                 </div>
             </div>
@@ -115,9 +128,9 @@
                         </label>
                         <select wire:model="classId" class="w-full border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
                             <option value="">Semua Kelas</option>
-                            @foreach($this->classes as $class)
-                                <option value="{{ $class->id }}">{{ $class->code }}</option>
-                            @endforeach
+                                @foreach($this->classes as $class)
+                                    <option value="{{ $class->id }}">{{ $class->code_label }}</option>
+                                @endforeach
                         </select>
                     </div>
                     <div>
@@ -175,148 +188,102 @@
         </div>
 
         <!-- Metrics -->
-        <div class="grid grid-cols-4 gap-4 transition-opacity duration-200" wire:loading.class="opacity-50" wire:target="applyFiltersAction">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
-                <div class="flex items-start justify-between mb-2">
-                    <div class="flex items-center gap-1">
-                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Pembayaran</p>
-                        <span class="group relative">
-                            <svg class="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                            </svg>
-                            <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
-                                Total pembayaran yang sudah diterima dalam periode ini melalui VA BNI
-                            </span>
-                        </span>
-                    </div>
-                    <div class="p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded">
-                        <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/></svg>
-                    </div>
-                </div>
-                <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($currentPeriodTotal, 0, ',', '.') }}</p>
-                <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs">
-                    <span class="font-medium {{ $periodChangePercent >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $periodChangePercent >= 0 ? '↗' : '↘' }} {{ number_format(abs($periodChangePercent), 1) }}%</span>
-                    <span class="text-gray-500 dark:text-gray-400 ml-1">vs periode lalu</span>
-                </div>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
-                <div class="flex items-start justify-between mb-2">
-                    <div class="flex items-center gap-1">
+        @if($reportType === 'revenue')
+            <div class="grid grid-cols-4 gap-4 transition-opacity duration-200" wire:loading.class="opacity-50" wire:target="applyFiltersAction">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-start justify-between mb-2">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total Tagihan</p>
-                        <span class="group relative">
-                            <svg class="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                            </svg>
-                            <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
-                                Jumlah seluruh invoice yang diterbitkan. Tingkat koleksi menunjukkan persentase yang sudah terbayar
-                            </span>
-                        </span>
+                        <div class="p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded">
+                            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/></svg>
+                        </div>
                     </div>
-                    <div class="p-1.5 bg-purple-50 dark:bg-purple-900/20 rounded">
-                        <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($currentPeriodTotal, 0, ',', '.') }}</p>
+                    <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs">
+                        <span class="font-medium {{ $periodChangePercent >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $periodChangePercent >= 0 ? '↗' : '↘' }} {{ number_format(abs($periodChangePercent), 1) }}%</span>
+                        <span class="text-gray-500 dark:text-gray-400 ml-1">vs periode lalu</span>
                     </div>
                 </div>
-                <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($totalInvoiced, 0, ',', '.') }}</p>
-                <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs">
-                    <span class="text-gray-500 dark:text-gray-400">Koleksi:</span>
-                    <span class="font-semibold text-gray-900 dark:text-gray-100 ml-1">{{ number_format($collectionRate, 1) }}%</span>
-                </div>
-            </div>
 
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
-                <div class="flex items-start justify-between mb-2">
-                    <div class="flex items-center gap-1">
-                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Tunggakan</p>
-                        <span class="group relative">
-                            <svg class="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                            </svg>
-                            <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
-                                Invoice yang sudah diterbitkan tetapi belum dibayar oleh siswa/orang tua
-                            </span>
-                        </span>
-                    </div>
-                    <div class="p-1.5 bg-red-50 dark:bg-red-900/20 rounded">
-                        <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-                    </div>
-                </div>
-                <p class="text-2xl font-bold text-red-600 dark:text-red-400">Rp {{ number_format($totalOutstanding, 0, ',', '.') }}</p>
-                <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-                    @php $outstandingPercent = $totalInvoiced > 0 ? ($totalOutstanding / $totalInvoiced) * 100 : 0; @endphp
-                    {{ number_format($outstandingPercent, 1) }}% dari total
-                </div>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
-                <div class="flex items-start justify-between mb-2">
-                    <div class="flex items-center gap-1">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-start justify-between mb-2">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Diskon</p>
-                        <span class="group relative">
-                            <svg class="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                            </svg>
-                            <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
-                                Potongan harga yang diberikan kepada siswa (misal: diskon alumni, diskon anak kembar, dll)
-                            </span>
-                        </span>
+                        <div class="p-1.5 bg-green-50 dark:bg-green-900/20 rounded">
+                            <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        </div>
                     </div>
-                    <div class="p-1.5 bg-green-50 dark:bg-green-900/20 rounded">
-                        <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($totalDiscounts, 0, ',', '.') }}</p>
+                    <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+                        Total potongan pada periode ini
                     </div>
                 </div>
-                <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($totalDiscounts, 0, ',', '.') }}</p>
-                <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-                    Potongan harga
-                </div>
-            </div>
-        </div>
 
-        <!-- Secondary Metrics -->
-        <div class="grid grid-cols-3 gap-4 transition-opacity duration-200" wire:loading.class="opacity-50" wire:target="applyFiltersAction">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 border border-gray-200 dark:border-gray-700">
-                <div class="flex items-center gap-1 mb-1">
-                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Rata-rata Transaksi</p>
-                    <span class="group relative">
-                        <svg class="w-3 h-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-40 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
-                            Nilai rata-rata per transaksi pembayaran
-                        </span>
-                    </span>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Jumlah Invoice</p>
+                        <div class="p-1.5 bg-purple-50 dark:bg-purple-900/20 rounded">
+                            <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ number_format($invoiceCount, 0, ',', '.') }} invoice</p>
                 </div>
-                <p class="text-lg font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($averageTransactionValue, 0, ',', '.') }}</p>
-            </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 border border-gray-200 dark:border-gray-700">
-                <div class="flex items-center gap-1 mb-1">
-                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total Transaksi</p>
-                    <span class="group relative">
-                        <svg class="w-3 h-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-40 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
-                            Jumlah transaksi pembayaran yang tercatat
-                        </span>
-                    </span>
+
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Rata-rata Tagihan</p>
+                        <div class="p-1.5 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                            <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-11a1 1 0 112 0v2a1 1 0 11-2 0V7zm1 4a1 1 0 00-1 1v3a1 1 0 102 0v-3a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($averageInvoiceValue, 0, ',', '.') }}</p>
                 </div>
-                <p class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ number_format($transactionCount, 0, ',', '.') }} transaksi</p>
             </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 border border-gray-200 dark:border-gray-700">
-                <div class="flex items-center gap-1 mb-1">
-                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Periode Sebelumnya</p>
-                    <span class="group relative">
-                        <svg class="w-3 h-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-help" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                        </svg>
-                        <span class="invisible group-hover:visible absolute left-0 top-full mt-1 w-40 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-10">
-                            Pembayaran periode sebelumnya untuk perbandingan
-                        </span>
-                    </span>
+        @else
+            <div class="grid grid-cols-4 gap-4 transition-opacity duration-200" wire:loading.class="opacity-50" wire:target="applyFiltersAction">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total Pembayaran</p>
+                        <div class="p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded">
+                            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/></svg>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($currentPeriodTotal, 0, ',', '.') }}</p>
+                    <div class="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 text-xs">
+                        <span class="font-medium {{ $periodChangePercent >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ $periodChangePercent >= 0 ? '↗' : '↘' }} {{ number_format(abs($periodChangePercent), 1) }}%</span>
+                        <span class="text-gray-500 dark:text-gray-400 ml-1">vs periode lalu</span>
+                    </div>
                 </div>
-                <p class="text-lg font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($previousPeriodTotal, 0, ',', '.') }}</p>
+
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Jumlah Transaksi</p>
+                        <div class="p-1.5 bg-purple-50 dark:bg-purple-900/20 rounded">
+                            <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ number_format($transactionCount, 0, ',', '.') }} transaksi</p>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Rata-rata Transaksi</p>
+                        <div class="p-1.5 bg-green-50 dark:bg-green-900/20 rounded">
+                            <svg class="w-4 h-4 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($averageTransactionValue, 0, ',', '.') }}</p>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-200 dark:border-gray-700">
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Periode Sebelumnya</p>
+                        <div class="p-1.5 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                            <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-11a1 1 0 112 0v2a1 1 0 11-2 0V7zm1 4a1 1 0 00-1 1v3a1 1 0 102 0v-3a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                        </div>
+                    </div>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">Rp {{ number_format($previousPeriodTotal, 0, ',', '.') }}</p>
+                </div>
             </div>
-        </div>
+        @endif
 
         <!-- Reports & Income Sources -->
         <div class="grid grid-cols-2 gap-5 transition-opacity duration-200" wire:loading.class="opacity-50" wire:target="applyFiltersAction">
@@ -331,7 +298,9 @@
                         <thead class="text-xs text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
                             <tr>
                                 <th class="py-2 text-left font-medium">Periode</th>
-                                <th class="py-2 text-center font-medium">Transaksi</th>
+                                <th class="py-2 text-center font-medium">
+                                    {{ $reportType === 'revenue' ? 'Invoice' : 'Transaksi' }}
+                                </th>
                                 <th class="py-2 text-right font-medium">Total</th>
                                 <th class="py-2 w-8"></th>
                             </tr>
@@ -348,7 +317,7 @@
                                     </td>
                                     <td class="py-2.5 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onclick="toggleDetail('detail-{{ $index }}')">
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                            {{ $r['count'] }} transaksi
+                                            {{ $r['count'] }} {{ $reportType === 'revenue' ? 'invoice' : 'transaksi' }}
                                         </span>
                                     </td>
                                     <td class="py-2.5 text-right font-semibold text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onclick="toggleDetail('detail-{{ $index }}')">
@@ -369,7 +338,7 @@
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                                 </svg>
-                                                Detail Transaksi ({{ count($r['details'] ?? []) }})
+                                                {{ $reportType === 'revenue' ? 'Detail Invoice' : 'Detail Transaksi' }} ({{ count($r['details'] ?? []) }})
                                                 @if(!isset($r['details']))
                                                     <span class="text-red-500 text-xs">[DEBUG: No details key]</span>
                                                 @endif
@@ -380,42 +349,129 @@
                                                         <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 hover:shadow-md transition-shadow">
                                                             <div class="flex items-start justify-between">
                                                                 <div class="flex-1">
-                                                                    <div class="flex items-center gap-2 mb-1">
-                                                                        <span class="font-semibold text-sm text-gray-900 dark:text-gray-100">
-                                                                            {{ $detail['receipt_number'] }}
-                                                                        </span>
-                                                                        @if($detail['class_code'])
-                                                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                                                                                {{ $detail['class_code'] }}
+                                                                    @if($reportType === 'revenue')
+                                                                        <div class="flex items-center gap-2 mb-1">
+                                                                            <span class="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                                                                                {{ $detail['invoice_number'] }}
                                                                             </span>
-                                                                        @endif
-                                                                    </div>
-                                                                    <div class="text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
-                                                                        <div class="flex items-center gap-1.5">
-                                                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                                                            </svg>
-                                                                            <span class="font-medium">{{ $detail['student_name'] }}</span>
+                                                                            @if($detail['class_code'])
+                                                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                                                                    {{ $detail['class_code'] }}
+                                                                                </span>
+                                                                            @endif
                                                                         </div>
-                                                                        <div class="flex items-center gap-1.5">
-                                                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                                                            </svg>
-                                                                            <span>{{ \Carbon\Carbon::parse($detail['payment_date'])->format('d M Y') }}</span>
-                                                                        </div>
-                                                                        @if($detail['invoice_number'])
+                                                                        <div class="text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
+                                                                            <div class="flex items-center gap-1.5">
+                                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                                                                </svg>
+                                                                                <span class="font-medium">{{ $detail['student_name'] }}</span>
+                                                                            </div>
+                                                                            <div class="flex items-center gap-1.5">
+                                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                                                </svg>
+                                                                                <span>Invoice: {{ \Carbon\Carbon::parse($detail['issued_at'])->format('d M Y') }}</span>
+                                                                            </div>
+                                                                            <div class="flex items-center gap-1.5">
+                                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                                                </svg>
+                                                                                <span>Jatuh Tempo: {{ $detail['due_date'] ? \Carbon\Carbon::parse($detail['due_date'])->format('d M Y') : '-' }}</span>
+                                                                            </div>
+                                                                            @php
+                                                                                $statusLabel = match($detail['status']) {
+                                                                                    'paid' => 'Lunas',
+                                                                                    'partial' => 'Sebagian',
+                                                                                    'unpaid' => 'Belum Bayar',
+                                                                                    default => ucfirst($detail['status'] ?? '-'),
+                                                                                };
+                                                                            @endphp
                                                                             <div class="flex items-center gap-1.5 text-gray-500 dark:text-gray-500">
                                                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                                                                 </svg>
-                                                                                <span>Invoice: {{ $detail['invoice_number'] }}</span>
+                                                                                <span>Status: {{ $statusLabel }}</span>
                                                                             </div>
-                                                                        @endif
-                                                                    </div>
+                                                                            @php
+                                                                                $descItems = array_values(array_filter(array_map('trim', explode(';', $detail['description'] ?? ''))));
+                                                                                $descItems = array_map(function ($item) {
+                                                                                    $item = preg_replace('/\s*\((\d+)\s*-\s*(\d+)\)\s*/', ' ', $item);
+                                                                                    $item = str_replace('_', ' ', (string) $item);
+                                                                                    return trim((string) $item);
+                                                                                }, $descItems);
+                                                                            @endphp
+                                                                            @if(count($descItems) > 0)
+                                                                                <div class="mt-1">
+                                                                                    <div class="text-xs font-semibold text-gray-600 dark:text-gray-400">Deskripsi</div>
+                                                                                    <ul class="list-disc list-inside">
+                                                                                        @foreach($descItems as $item)
+                                                                                            <li>{{ $item }}</li>
+                                                                                        @endforeach
+                                                                                    </ul>
+                                                                                </div>
+                                                                            @endif
+                                                                        </div>
+                                                                    @else
+                                                                        <div class="flex items-center gap-2 mb-1">
+                                                                            <span class="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                                                                                {{ $detail['receipt_number'] }}
+                                                                            </span>
+                                                                            @if($detail['class_code'])
+                                                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                                                                    {{ $detail['class_code'] }}
+                                                                                </span>
+                                                                            @endif
+                                                                        </div>
+                                                                        <div class="text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
+                                                                            <div class="flex items-center gap-1.5">
+                                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                                                                </svg>
+                                                                                <span class="font-medium">{{ $detail['student_name'] }}</span>
+                                                                            </div>
+                                                                            <div class="flex items-center gap-1.5">
+                                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                                                </svg>
+                                                                                <span>Dibayarkan: {{ \Carbon\Carbon::parse($detail['payment_date'])->format('d M Y') }}</span>
+                                                                            </div>
+                                                                            @if($detail['invoice_number'])
+                                                                                <div class="flex items-center gap-1.5 text-gray-500 dark:text-gray-500">
+                                                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                                                    </svg>
+                                                                                    <span>Invoice: {{ $detail['invoice_number'] }}</span>
+                                                                                </div>
+                                                                            @endif
+                                                                            @php
+                                                                                $descItems = array_values(array_filter(array_map('trim', explode(';', $detail['description'] ?? ''))));
+                                                                                $descItems = array_map(function ($item) {
+                                                                                    $item = preg_replace('/\s*\((\d+)\s*-\s*(\d+)\)\s*/', ' ', $item);
+                                                                                    $item = str_replace('_', ' ', (string) $item);
+                                                                                    return trim((string) $item);
+                                                                                }, $descItems);
+                                                                            @endphp
+                                                                            @if(count($descItems) > 0)
+                                                                                <div class="mt-1">
+                                                                                    <div class="text-xs font-semibold text-gray-600 dark:text-gray-400">Deskripsi</div>
+                                                                                    <ul class="list-disc list-inside">
+                                                                                        @foreach($descItems as $item)
+                                                                                            <li>{{ $item }}</li>
+                                                                                        @endforeach
+                                                                                    </ul>
+                                                                                </div>
+                                                                            @endif
+                                                                        </div>
+                                                                    @endif
                                                                 </div>
                                                                 <div class="ml-3 text-right">
                                                                     <div class="text-sm font-bold text-green-600 dark:text-green-400">
-                                                                        Rp {{ number_format($detail['amount_paid'], 0, ',', '.') }}
+                                                                        @if($reportType === 'revenue')
+                                                                            Rp {{ number_format($detail['total_amount'], 0, ',', '.') }}
+                                                                        @else
+                                                                            Rp {{ number_format($detail['amount_paid'], 0, ',', '.') }}
+                                                                        @endif
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -475,7 +531,9 @@
             <!-- Sumber Pemasukan -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                 <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase">Sumber Pemasukan</h3>
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase">
+                        {{ $reportType === 'revenue' ? 'Sumber Pemasukan' : 'Sumber Penerimaan' }}
+                    </h3>
                 </div>
                 <div class="p-4">
                     <table class="w-full text-sm">
@@ -517,7 +575,7 @@
         </div>
 
         <!-- Collection by Class -->
-        @if(!empty($collectionByClass))
+        @if($reportType === 'receipt' && !empty($collectionByClass))
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-opacity duration-200" wire:loading.class="opacity-50" wire:target="applyFiltersAction">
             <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase">Ringkasan Koleksi per Kelas</h3>
