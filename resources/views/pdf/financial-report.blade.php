@@ -106,7 +106,7 @@
                 <th style="width: 4%;">No</th>
                 <th style="width: 12%;">Tanggal Invoice</th>
                 <th style="width: 16%;">Nomor Invoice</th>
-                <th style="width: 18%;">Pelanggan</th>
+                <th style="width: 18%;">Siswa</th>
                 <th style="width: 12%;">Jatuh Tempo</th>
                 <th style="width: 12%;">Nominal</th>
                 <th>Deskripsi</th>
@@ -243,7 +243,7 @@
                 <th style="width: 4%;">No</th>
                 <th style="width: 12%;">Tanggal Kuitansi</th>
                 <th style="width: 16%;">Nomor Kuitansi</th>
-                <th style="width: 18%;">Pelanggan</th>
+                <th style="width: 18%;">Siswa</th>
                 <th style="width: 12%;">Nilai Tagihan</th>
                 <th style="width: 12%;">Pembayaran</th>
                 <th style="width: 16%;">Deskripsi</th>

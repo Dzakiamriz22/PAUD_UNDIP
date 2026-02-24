@@ -620,7 +620,7 @@ class InvoiceResource extends Resource
                                                     <div class='flex items-center gap-2 mt-0.5 flex-wrap'>
                                                         <span class='text-xs text-gray-500'>{$billingTypeLabel}{$periodInfo}</span>
                                                         <span class='text-xs text-gray-400'>•</span>
-                                                        <span class='text-xs text-gray-500'>{$tariff->class_category}</span>
+                                                        <span class='text-xs text-gray-500'>{$tariff->class_category_label}</span>
                                                     </div>
                                                 </div>
                                                 <div class='text-right ml-4'>

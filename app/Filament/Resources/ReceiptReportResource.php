@@ -2,24 +2,24 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\ReceiptReportResource\Pages;
 use App\Models\FinancialReport;
-use App\Filament\Resources\FinancialReportResource\Pages;
 use Filament\Resources\Resource;
 use Illuminate\Database\Eloquent\Model;
 
-class FinancialReportResource extends Resource
+class ReceiptReportResource extends Resource
 {
     protected static ?string $model = FinancialReport::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
+    protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationGroup = 'Keuangan';
-    protected static ?string $navigationLabel = 'Laporan Pemasukan';
-    protected static ?int $navigationSort = 2;
+    protected static ?string $navigationLabel = 'Laporan Penerimaan';
+    protected static ?int $navigationSort = 3;
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListRevenueReports::route('/'),
+            'index' => Pages\ListReceiptReports::route('/'),
         ];
     }
 

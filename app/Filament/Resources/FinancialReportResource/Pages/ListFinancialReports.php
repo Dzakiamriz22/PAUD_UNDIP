@@ -25,6 +25,9 @@ class ListFinancialReports extends ListRecords
     public $averageTransactionValue = 0;
     public $transactionCount = 0;
     public $collectionRate = 0; // Percentage of invoiced amount that has been paid
+    public $invoiceCount = 0;
+    public $averageInvoiceValue = 0;
+    public $reportType = 'receipt'; // receipt|revenue
 
     // Filter properties
     public $granularity = 'monthly'; // monthly|yearly
@@ -56,21 +59,6 @@ class ListFinancialReports extends ListRecords
         if ($activeAcademicYear) {
             $this->academicYearId = $activeAcademicYear->id;
         }
-
-        // Base totals from invoices/receipts
-        $this->totalInvoiced = (float) Invoice::sum('total_amount');
-        $this->totalDiscounts = (float) Invoice::sum('discount_amount');
-        $this->totalPaid = (float) Receipt::sum('amount_paid');
-        $this->totalOutstanding = max(0, $this->totalInvoiced - $this->totalPaid);
-        
-        // Calculate additional metrics
-        $this->transactionCount = Receipt::count();
-        $this->averageTransactionValue = $this->transactionCount > 0 
-            ? $this->totalPaid / $this->transactionCount 
-            : 0;
-        $this->collectionRate = $this->totalInvoiced > 0 
-            ? ($this->totalPaid / $this->totalInvoiced) * 100 
-            : 0;
 
         $this->applyFilters();
     }
@@ -137,6 +125,11 @@ class ListFinancialReports extends ListRecords
      */
     public function applyFilters(): void
     {
+        if ($this->reportType === 'revenue') {
+            $this->applyRevenueFilters();
+            return;
+        }
+
         // Base query for receipts with all filter dimensions (except income type which is handled separately)
         $query = DB::table('receipts')
             ->join('invoices', 'receipts.invoice_id', '=', 'invoices.id')
@@ -255,6 +248,7 @@ class ListFinancialReports extends ListRecords
             $detailsQuery = DB::table('receipts')
                 ->join('invoices', 'receipts.invoice_id', '=', 'invoices.id')
                 ->join('students', 'invoices.student_id', '=', 'students.id')
+                ->leftJoin('invoice_items', 'invoices.id', '=', 'invoice_items.invoice_id')
                 ->leftJoin('student_class_histories as sch', function($join) {
                     $join->on('students.id', '=', 'sch.student_id')
                         ->where('sch.is_active', true);
@@ -296,6 +290,16 @@ class ListFinancialReports extends ListRecords
                     'receipts.amount_paid',
                     'students.name as student_name',
                     'classes.code as class_code',
+                    'invoices.invoice_number',
+                    DB::raw("GROUP_CONCAT(DISTINCT invoice_items.description SEPARATOR '; ') as description")
+                )
+                ->groupBy(
+                    'receipts.id',
+                    'receipts.receipt_number',
+                    'receipts.payment_date',
+                    'receipts.amount_paid',
+                    'students.name',
+                    'classes.code',
                     'invoices.invoice_number'
                 )
                 ->orderBy('receipts.payment_date', 'desc')
@@ -306,8 +310,9 @@ class ListFinancialReports extends ListRecords
                         'payment_date' => $d->payment_date,
                         'amount_paid' => (float) $d->amount_paid,
                         'student_name' => $d->student_name,
-                        'class_code' => $d->class_code,
+                        'class_code' => $this->formatClassLabel($d->class_code),
                         'invoice_number' => $d->invoice_number,
+                        'description' => $d->description ?: '-',
                     ];
                 })
                 ->toArray();
@@ -325,6 +330,17 @@ class ListFinancialReports extends ListRecords
 
         // compute current period total (sum of visible rows)
         $this->currentPeriodTotal = array_sum(array_column($rows, 'total_amount'));
+        $this->transactionCount = array_sum(array_column($rows, 'count'));
+        $this->totalPaid = $this->currentPeriodTotal;
+        $this->averageTransactionValue = $this->transactionCount > 0
+            ? $this->totalPaid / $this->transactionCount
+            : 0;
+        $this->totalInvoiced = 0;
+        $this->totalDiscounts = 0;
+        $this->totalOutstanding = 0;
+        $this->collectionRate = 0;
+        $this->invoiceCount = 0;
+        $this->averageInvoiceValue = 0;
 
         // previous period total: for monthly -> previous month, yearly -> previous year
         if ($this->granularity === 'monthly') {
@@ -570,7 +586,7 @@ class ListFinancialReports extends ListRecords
             $collectionRate = $totalInvoiced > 0 ? ($totalPaid / $totalInvoiced) * 100 : 0;
             
             $this->collectionByClass[] = [
-                'class_name' => $classCode,
+                'class_name' => $this->formatClassLabel($classCode),
                 'total_invoiced' => $totalInvoiced,
                 'total_paid' => $totalPaid,
                 'outstanding' => max(0, $totalInvoiced - $totalPaid),
@@ -599,19 +615,350 @@ class ListFinancialReports extends ListRecords
             }
         }
     }
+
+    private function applyRevenueFilters(): void
+    {
+        $query = DB::table('invoices')
+            ->join('students', 'invoices.student_id', '=', 'students.id')
+            ->leftJoin('student_class_histories as sch', function($join) {
+                $join->on('students.id', '=', 'sch.student_id')
+                    ->where('sch.is_active', true);
+            })
+            ->selectRaw(
+                $this->granularity === 'monthly'
+                    ? "YEAR(invoices.issued_at) as year, MONTH(invoices.issued_at) as month, SUM(invoices.total_amount) as total_amount, COUNT(invoices.id) as count"
+                    : "YEAR(invoices.issued_at) as year, SUM(invoices.total_amount) as total_amount, COUNT(invoices.id) as count"
+            );
+
+        if ($this->granularity === 'monthly') {
+            $query->whereYear('invoices.issued_at', $this->year);
+            if (! empty($this->month)) {
+                $query->whereMonth('invoices.issued_at', $this->month);
+            }
+        } else {
+            if (! empty($this->year)) {
+                $query->whereYear('invoices.issued_at', $this->year);
+            }
+        }
+
+        if ($this->academicYearId) {
+            $query->where('invoices.academic_year_id', $this->academicYearId);
+        }
+
+        if ($this->classId) {
+            $query->where('sch.class_id', $this->classId);
+        }
+
+        if ($this->status !== 'all') {
+            $query->where('invoices.status', $this->status);
+        }
+
+        $query->groupBy($this->granularity === 'monthly' ? ['year', 'month'] : ['year'])
+            ->orderBy('year', 'desc');
+
+        if ($this->granularity === 'monthly') {
+            $query->orderBy('month', 'desc');
+        }
+
+        $rows = $query->get();
+        $validInvoiceIds = [];
+
+        if ($this->incomeTypeId) {
+            $invoiceIdsQuery = DB::table('invoices')
+                ->join('students', 'invoices.student_id', '=', 'students.id')
+                ->join('invoice_items', 'invoices.id', '=', 'invoice_items.invoice_id')
+                ->join('tariffs', 'invoice_items.tariff_id', '=', 'tariffs.id')
+                ->leftJoin('student_class_histories as sch', function($join) {
+                    $join->on('students.id', '=', 'sch.student_id')
+                        ->where('sch.is_active', true);
+                })
+                ->where('tariffs.income_type_id', $this->incomeTypeId);
+
+            if ($this->granularity === 'monthly') {
+                $invoiceIdsQuery->whereYear('invoices.issued_at', $this->year);
+                if (! empty($this->month)) {
+                    $invoiceIdsQuery->whereMonth('invoices.issued_at', $this->month);
+                }
+            } else {
+                if (! empty($this->year)) {
+                    $invoiceIdsQuery->whereYear('invoices.issued_at', $this->year);
+                }
+            }
+
+            if ($this->academicYearId) {
+                $invoiceIdsQuery->where('invoices.academic_year_id', $this->academicYearId);
+            }
+            if ($this->classId) {
+                $invoiceIdsQuery->where('sch.class_id', $this->classId);
+            }
+            if ($this->status !== 'all') {
+                $invoiceIdsQuery->where('invoices.status', $this->status);
+            }
+
+            $validInvoiceIds = $invoiceIdsQuery->pluck('invoices.id')->unique()->toArray();
+
+            if (!empty($validInvoiceIds)) {
+                $filteredQuery = DB::table('invoices')
+                    ->whereIn('id', $validInvoiceIds)
+                    ->selectRaw(
+                        $this->granularity === 'monthly'
+                            ? "YEAR(issued_at) as year, MONTH(issued_at) as month, SUM(total_amount) as total_amount, COUNT(id) as count"
+                            : "YEAR(issued_at) as year, SUM(total_amount) as total_amount, COUNT(id) as count"
+                    )
+                    ->groupBy($this->granularity === 'monthly' ? ['year', 'month'] : ['year'])
+                    ->orderBy('year', 'desc');
+
+                if ($this->granularity === 'monthly') {
+                    $filteredQuery->orderBy('month', 'desc');
+                }
+
+                $rows = $filteredQuery->get();
+            } else {
+                $rows = collect();
+            }
+        }
+
+        $rows = $rows->map(function ($r) use ($validInvoiceIds) {
+            $detailsQuery = DB::table('invoices')
+                ->join('students', 'invoices.student_id', '=', 'students.id')
+                ->leftJoin('invoice_items', 'invoices.id', '=', 'invoice_items.invoice_id')
+                ->leftJoin('student_class_histories as sch', function($join) {
+                    $join->on('students.id', '=', 'sch.student_id')
+                        ->where('sch.is_active', true);
+                })
+                ->leftJoin('classes', 'sch.class_id', '=', 'classes.id');
+
+            if ($this->granularity === 'monthly') {
+                $detailsQuery->whereYear('invoices.issued_at', $r->year)
+                    ->whereMonth('invoices.issued_at', $r->month);
+            } else {
+                $detailsQuery->whereYear('invoices.issued_at', $r->year);
+            }
+
+            if ($this->academicYearId) {
+                $detailsQuery->where('invoices.academic_year_id', $this->academicYearId);
+            }
+            if ($this->classId) {
+                $detailsQuery->where('sch.class_id', $this->classId);
+            }
+            if ($this->status !== 'all') {
+                $detailsQuery->where('invoices.status', $this->status);
+            }
+            if ($this->incomeTypeId) {
+                $detailsQuery->join('invoice_items', 'invoices.id', '=', 'invoice_items.invoice_id')
+                    ->join('tariffs', 'invoice_items.tariff_id', '=', 'tariffs.id')
+                    ->where('tariffs.income_type_id', $this->incomeTypeId);
+            }
+            if (!empty($validInvoiceIds)) {
+                $detailsQuery->whereIn('invoices.id', $validInvoiceIds);
+            }
+
+            $details = $detailsQuery
+                ->select(
+                    'invoices.id',
+                    'invoices.issued_at',
+                    'invoices.invoice_number',
+                    'invoices.due_date',
+                    'invoices.total_amount',
+                    'invoices.status',
+                    'students.name as student_name',
+                    'classes.code as class_code',
+                    DB::raw("GROUP_CONCAT(DISTINCT invoice_items.description SEPARATOR '; ') as description")
+                )
+                ->groupBy(
+                    'invoices.id',
+                    'invoices.issued_at',
+                    'invoices.invoice_number',
+                    'invoices.due_date',
+                    'invoices.total_amount',
+                    'invoices.status',
+                    'students.name',
+                    'classes.code'
+                )
+                ->orderBy('invoices.issued_at', 'desc')
+                ->get()
+                ->map(function ($d) {
+                    return [
+                        'invoice_number' => $d->invoice_number,
+                        'issued_at' => $d->issued_at,
+                        'due_date' => $d->due_date,
+                        'total_amount' => (float) $d->total_amount,
+                        'student_name' => $d->student_name,
+                        'class_code' => $this->formatClassLabel($d->class_code),
+                        'status' => $d->status,
+                        'description' => $d->description ?: '-',
+                    ];
+                })
+                ->toArray();
+
+            return [
+                'year' => $r->year,
+                'month' => $r->month ?? null,
+                'total_amount' => (float) $r->total_amount,
+                'count' => (int) $r->count,
+                'details' => $details,
+            ];
+        })->toArray();
+
+        $this->reportRows = $rows;
+        $this->currentPeriodTotal = array_sum(array_column($rows, 'total_amount'));
+        $this->invoiceCount = array_sum(array_column($rows, 'count'));
+        $this->totalInvoiced = $this->currentPeriodTotal;
+        $this->averageInvoiceValue = $this->invoiceCount > 0
+            ? $this->totalInvoiced / $this->invoiceCount
+            : 0;
+
+        $discountQuery = DB::table('invoices');
+        if ($this->granularity === 'monthly') {
+            $discountQuery->whereYear('issued_at', $this->year);
+            if (! empty($this->month)) {
+                $discountQuery->whereMonth('issued_at', $this->month);
+            }
+        } else {
+            if (! empty($this->year)) {
+                $discountQuery->whereYear('issued_at', $this->year);
+            }
+        }
+        if ($this->academicYearId) {
+            $discountQuery->where('academic_year_id', $this->academicYearId);
+        }
+        if ($this->status !== 'all') {
+            $discountQuery->where('status', $this->status);
+        }
+        if (!empty($validInvoiceIds)) {
+            $discountQuery->whereIn('id', $validInvoiceIds);
+        }
+
+        $this->totalDiscounts = (float) $discountQuery->sum('discount_amount');
+        $this->transactionCount = 0;
+        $this->averageTransactionValue = 0;
+        $this->totalPaid = 0;
+        $this->totalOutstanding = 0;
+        $this->collectionRate = 0;
+
+        if ($this->granularity === 'monthly') {
+            $prev = DB::table('invoices')
+                ->selectRaw('SUM(total_amount) as total')
+                ->whereYear('issued_at', $this->month == 1 ? $this->year - 1 : $this->year)
+                ->whereMonth('issued_at', $this->month == 1 ? 12 : max(1, $this->month - 1))
+                ->value('total');
+        } else {
+            $prev = DB::table('invoices')
+                ->selectRaw('SUM(total_amount) as total')
+                ->whereYear('issued_at', $this->year - 1)
+                ->value('total');
+        }
+
+        $this->previousPeriodTotal = (float) ($prev ?? 0);
+        $this->periodChangePercent = $this->previousPeriodTotal > 0
+            ? round((($this->currentPeriodTotal - $this->previousPeriodTotal) / $this->previousPeriodTotal) * 100, 2)
+            : ($this->currentPeriodTotal > 0 ? 100.0 : 0.0);
+
+        $this->sparkline = [];
+        if ($this->granularity === 'monthly') {
+            for ($i = 5; $i >= 0; $i--) {
+                $dt = now()->setYear($this->year)->subMonths($i);
+                $val = DB::table('invoices')
+                    ->whereYear('issued_at', $dt->year)
+                    ->whereMonth('issued_at', $dt->month)
+                    ->sum('total_amount');
+                $this->sparkline[] = (float) $val;
+            }
+        } else {
+            for ($i = 5; $i >= 0; $i--) {
+                $yr = $this->year - $i;
+                $val = DB::table('invoices')
+                    ->whereYear('issued_at', $yr)
+                    ->sum('total_amount');
+                $this->sparkline[] = (float) $val;
+            }
+        }
+
+        $invoiceBase = DB::table('invoices')
+            ->join('students', 'invoices.student_id', '=', 'students.id')
+            ->leftJoin('student_class_histories as sch', function($join) {
+                $join->on('students.id', '=', 'sch.student_id')
+                    ->where('sch.is_active', true);
+            });
+
+        if ($this->granularity === 'monthly') {
+            $invoiceBase->whereYear('invoices.issued_at', $this->year);
+            if (! empty($this->month)) {
+                $invoiceBase->whereMonth('invoices.issued_at', $this->month);
+            }
+        } else {
+            if (! empty($this->year)) {
+                $invoiceBase->whereYear('invoices.issued_at', $this->year);
+            }
+        }
+
+        if ($this->academicYearId) {
+            $invoiceBase->where('invoices.academic_year_id', $this->academicYearId);
+        }
+        if ($this->classId) {
+            $invoiceBase->where('sch.class_id', $this->classId);
+        }
+        if ($this->status !== 'all') {
+            $invoiceBase->where('invoices.status', $this->status);
+        }
+        if ($this->incomeTypeId) {
+            $invoiceBase->join('invoice_items', 'invoices.id', '=', 'invoice_items.invoice_id')
+                ->join('tariffs', 'invoice_items.tariff_id', '=', 'tariffs.id')
+                ->where('tariffs.income_type_id', $this->incomeTypeId);
+        }
+
+        $invoiceIds = $invoiceBase->pluck('invoices.id')->unique()->filter()->values()->toArray();
+        if (empty($invoiceIds)) {
+            $this->incomeSources = [];
+            $this->collectionByClass = [];
+            return;
+        }
+
+        $sourcesQuery = DB::table('invoice_items')
+            ->join('tariffs', 'invoice_items.tariff_id', '=', 'tariffs.id')
+            ->join('income_types', 'tariffs.income_type_id', '=', 'income_types.id')
+            ->whereIn('invoice_items.invoice_id', $invoiceIds)
+            ->where('income_types.is_discount', false);
+
+        if ($this->incomeTypeId) {
+            $sourcesQuery->where('income_types.id', $this->incomeTypeId);
+        }
+
+        $this->incomeSources = $sourcesQuery
+            ->selectRaw('income_types.name as income_type, SUM(invoice_items.final_amount) as total_amount, COUNT(*) as items_count')
+            ->groupBy('income_types.name')
+            ->orderByDesc('total_amount')
+            ->get()
+            ->map(function ($s) {
+                return [
+                    'income_type' => $s->income_type,
+                    'total_amount' => (float) $s->total_amount,
+                    'items_count' => (int) $s->items_count,
+                ];
+            })->toArray();
+
+        $this->collectionByClass = [];
+
+        if ($this->granularity === 'monthly') {
+            $this->monthlyComparison = [];
+            for ($m = 1; $m <= 12; $m++) {
+                $total = DB::table('invoices')
+                    ->whereYear('issued_at', $this->year)
+                    ->whereMonth('issued_at', $m)
+                    ->sum('total_amount');
+                $this->monthlyComparison[] = [
+                    'month' => $m,
+                    'month_name' => \DateTime::createFromFormat('!m', $m)->format('M'),
+                    'total' => (float) $total,
+                ];
+            }
+        }
+    }
     
     public function exportPdf()
     {
         $generalSettings = app(GeneralSettings::class);
         $periodRange = $this->buildPeriodRange();
-        $revenueRows = $this->buildRevenueRows();
-        $receiptRows = $this->buildReceiptRows();
-
-        $revenueTotal = array_sum(array_column($revenueRows, 'nominal'));
-        $receiptTotals = [
-            'total_tagihan' => array_sum(array_column($receiptRows, 'nilai_tagihan')),
-            'total_pembayaran' => array_sum(array_column($receiptRows, 'pembayaran')),
-        ];
         
         // Get filter display values
         $incomeTypeName = 'All';
@@ -623,7 +970,7 @@ class ListFinancialReports extends ListRecords
         $className = 'All';
         if ($this->classId) {
             $class = \App\Models\SchoolClass::find($this->classId);
-            $className = $class ? $class->code : 'All';
+            $className = $class ? $this->formatClassLabel($class->code) : 'All';
         }
         
         $statusLabel = match($this->status) {
@@ -652,17 +999,29 @@ class ListFinancialReports extends ListRecords
                 'sistem_bayar' => 'Auto system',
                 'bendahara' => auth()->user()?->name ?? '-',
             ],
-            'revenueRows' => $revenueRows,
-            'receiptRows' => $receiptRows,
-            'revenueTotal' => $revenueTotal,
-            'receiptTotals' => $receiptTotals,
             'generatedAt' => now(),
         ];
-        
-        $pdf = Pdf::loadView('pdf.financial-report', $data)
+
+        if ($this->reportType === 'revenue') {
+            $revenueRows = $this->buildRevenueRows();
+            $data['revenueRows'] = $revenueRows;
+            $data['revenueTotal'] = array_sum(array_column($revenueRows, 'nominal'));
+            $view = 'pdf.financial-report-revenue';
+            $filename = 'laporan-pemasukan-' . $this->year;
+        } else {
+            $receiptRows = $this->buildReceiptRows();
+            $data['receiptRows'] = $receiptRows;
+            $data['receiptTotals'] = [
+                'total_tagihan' => array_sum(array_column($receiptRows, 'nilai_tagihan')),
+                'total_pembayaran' => array_sum(array_column($receiptRows, 'pembayaran')),
+            ];
+            $view = 'pdf.financial-report-receipt';
+            $filename = 'laporan-penerimaan-' . $this->year;
+        }
+
+        $pdf = Pdf::loadView($view, $data)
             ->setPaper('A4', 'landscape');
-            
-        $filename = 'laporan-keuangan-' . $this->year;
+
         if ($this->granularity === 'monthly' && $this->month) {
             $filename .= '-' . str_pad($this->month, 2, '0', STR_PAD_LEFT);
         }
@@ -768,9 +1127,7 @@ class ListFinancialReports extends ListRecords
                 'pelanggan' => $row->student_name,
                 'jatuh_tempo' => $row->due_date ? Carbon::parse($row->due_date) : null,
                 'nominal' => (float) $row->total_amount,
-                'deskripsi' => $row->description
-                ? preg_replace('/\s*\(\d+-\d+\)/', '', $row->description)
-                : '-',
+                'deskripsi' => $row->description ?: '-',
                 'status' => $row->status,
             ];
         })->values()->toArray();
@@ -789,6 +1146,7 @@ class ListFinancialReports extends ListRecords
             })
             ->select([
                 'receipts.id',
+                'receipts.created_at',
                 'receipts.payment_date',
                 'receipts.receipt_number',
                 'students.name as student_name',
@@ -801,6 +1159,7 @@ class ListFinancialReports extends ListRecords
             ])
             ->groupBy(
                 'receipts.id',
+                'receipts.created_at',
                 'receipts.payment_date',
                 'receipts.receipt_number',
                 'students.name',
@@ -858,14 +1217,13 @@ class ListFinancialReports extends ListRecords
             $status = $paidAmount >= $totalAmount ? 'Lunas' : ($paidAmount > 0 ? 'Kurang bayar' : 'Belum bayar');
 
             return [
-                'tanggal_kuitansi' => $row->payment_date ? Carbon::parse($row->payment_date) : null,
+                'tanggal_kuitansi' => $row->created_at ? Carbon::parse($row->created_at) : null,
+                'tanggal_bayar' => $row->payment_date ? Carbon::parse($row->payment_date) : null,
                 'nomor_kuitansi' => $row->receipt_number,
                 'pelanggan' => $row->student_name,
                 'nilai_tagihan' => $totalAmount,
                 'pembayaran' => $paidAmount,
-                'deskripsi' => $row->description
-                ? preg_replace('/\s*\(\d+-\d+\)/', '', $row->description)
-                : '-',
+                'deskripsi' => $row->description ?: '-',
                 'keterangan' => $status,
             ];
         })->values()->toArray();
@@ -873,7 +1231,9 @@ class ListFinancialReports extends ListRecords
     
     public function exportExcel()
     {
-        $filename = 'laporan-keuangan-' . $this->year;
+        $filename = $this->reportType === 'revenue'
+            ? 'laporan-pemasukan-' . $this->year
+            : 'laporan-penerimaan-' . $this->year;
         if ($this->granularity === 'monthly' && $this->month) {
             $filename .= '-' . str_pad($this->month, 2, '0', STR_PAD_LEFT);
         }
@@ -896,7 +1256,7 @@ class ListFinancialReports extends ListRecords
         
         if ($this->classId) {
             $class = \App\Models\SchoolClass::find($this->classId);
-            $summary['Kelas'] = $class ? $class->code : 'Semua';
+            $summary['Kelas'] = $class ? $this->formatClassLabel($class->code) : 'Semua';
         }
         
         if ($this->status !== 'all') {
@@ -915,16 +1275,20 @@ class ListFinancialReports extends ListRecords
                 : 'Semua';
         }
 
-        $summary['Total Tagihan'] = (float) $this->totalInvoiced;
-        $summary['Total Pembayaran'] = (float) $this->totalPaid;
-        $summary['Total Outstanding'] = (float) $this->totalOutstanding;
-        $summary['Total Diskon'] = (float) $this->totalDiscounts;
-        $summary['Rata-rata Transaksi'] = (float) $this->averageTransactionValue;
-        $summary['Jumlah Transaksi'] = (int) $this->transactionCount;
-        $summary['Tingkat Koleksi'] = number_format($this->collectionRate, 2) . '%';
-        $summary['Total Pembayaran Periode Ini'] = (float) $this->currentPeriodTotal;
-        $summary['Total Pembayaran Periode Sebelumnya'] = (float) $this->previousPeriodTotal;
-        $summary['Perubahan Periode'] = number_format($this->periodChangePercent, 2) . '%';
+        if ($this->reportType === 'revenue') {
+            $summary['Total Tagihan'] = (float) $this->currentPeriodTotal;
+            $summary['Total Diskon'] = (float) $this->totalDiscounts;
+            $summary['Jumlah Invoice'] = (int) $this->invoiceCount;
+            $summary['Rata-rata Tagihan'] = (float) $this->averageInvoiceValue;
+            $summary['Total Tagihan Periode Sebelumnya'] = (float) $this->previousPeriodTotal;
+            $summary['Perubahan Periode'] = number_format($this->periodChangePercent, 2) . '%';
+        } else {
+            $summary['Total Pembayaran'] = (float) $this->currentPeriodTotal;
+            $summary['Jumlah Transaksi'] = (int) $this->transactionCount;
+            $summary['Rata-rata Transaksi'] = (float) $this->averageTransactionValue;
+            $summary['Total Pembayaran Periode Sebelumnya'] = (float) $this->previousPeriodTotal;
+            $summary['Perubahan Periode'] = number_format($this->periodChangePercent, 2) . '%';
+        }
         $summary['Waktu Export'] = now()->format('Y-m-d H:i');
 
         $export = new FinancialReportExport(
@@ -938,9 +1302,15 @@ class ListFinancialReports extends ListRecords
             $this->incomeTypeId,
             $this->classId,
             $this->status,
-            $this->academicYearId
+            $this->academicYearId,
+            $this->reportType
         );
 
         return Excel::download($export, $filename);
+    }
+
+    private function formatClassLabel(?string $value): string
+    {
+        return $value ? str_replace('_', ' ', $value) : '-';
     }
 }

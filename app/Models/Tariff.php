@@ -44,6 +44,11 @@ class Tariff extends Model
         };
     }
 
+    public function getClassCategoryLabelAttribute(): string
+    {
+        return str_replace('_', ' ', (string) $this->class_category);
+    }
+
     /* ================= UUID AUTO ================= */
     protected static function booted()
     {

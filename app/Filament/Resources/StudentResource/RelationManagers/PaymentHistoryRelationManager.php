@@ -29,6 +29,14 @@ class PaymentHistoryRelationManager extends RelationManager
 
                 Tables\Columns\TextColumn::make('description')
                     ->label('Deskripsi')
+                    ->formatStateUsing(function ($state) {
+                        if (!$state) {
+                            return '-';
+                        }
+                        $value = preg_replace('/\s*\((\d+)\s*-\s*(\d+)\)\s*/', ' ', (string) $state);
+                        $value = str_replace('_', ' ', $value);
+                        return trim((string) $value);
+                    })
                     ->toggleable(),
 
                 // Tables\Columns\TextColumn::make('tariff.incomeType.name')
@@ -135,6 +143,7 @@ class PaymentHistoryRelationManager extends RelationManager
                                 $years = $this->ownerRecord->invoiceItems()
                                     ->distinct()
                                     ->pluck('period_year')
+                                    ->filter(fn ($year) => !is_null($year))
                                     ->sortDesc()
                                     ->mapWithKeys(fn ($year) => [$year => $year]);
                                 return $years->toArray();

@@ -47,4 +47,14 @@ class SchoolClass extends Model
     {
         return $this->hasMany(StudentClassHistory::class, 'class_id');
     }
+
+    public function getCodeLabelAttribute(): string
+    {
+        return str_replace('_', ' ', (string) $this->code);
+    }
+
+    public function getCategoryLabelAttribute(): string
+    {
+        return str_replace('_', ' ', (string) $this->category);
+    }
 }
