@@ -4,31 +4,38 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use App\Models\Student;
+use App\Models\SchoolClass;
+use App\Models\Receipt;
 
 class StatsOverview extends BaseWidget
 {
-    protected ?string $heading = 'Statistik Aplikasi';
+    protected ?string $heading = 'Statistik PAUD';
 
     protected function getStats(): array
     {
+        $totalStudents = Student::count();
+        $totalClasses = SchoolClass::count();
+        $totalIncome = (float) Receipt::sum('amount_paid');
+
         return [
-            Stat::make('Total Users', '0')
-                ->description('Pengguna terdaftar')
-                ->descriptionIcon('heroicon-m-users')
+            Stat::make('Total Siswa', (string) $totalStudents)
+                ->description('Siswa terdaftar')
+                ->descriptionIcon('heroicon-m-user-group')
                 ->color('primary')
-                ->chart([7, 3, 4, 5, 6, 3, 5]),
+                ->chart([]),
 
-            Stat::make('Total Posts', '0')
-                ->description('Postingan aktif')
-                ->descriptionIcon('heroicon-m-document-text')
+            Stat::make('Total Kelas', (string) $totalClasses)
+                ->description('Kelas aktif')
+                ->descriptionIcon('heroicon-m-academic-cap')
                 ->color('success')
-                ->chart([3, 2, 4, 3, 5, 4, 6]),
+                ->chart([]),
 
-            Stat::make('Total Orders', '0')
-                ->description('Pesanan baru')
-                ->descriptionIcon('heroicon-m-shopping-cart')
+            Stat::make('Total Pemasukan', 'Rp ' . number_format($totalIncome, 0, ',', '.'))
+                ->description('Total penerimaan (semua waktu)')
+                ->descriptionIcon('heroicon-m-currency-dollar')
                 ->color('warning')
-                ->chart([5, 4, 3, 6, 5, 4, 7]),
+                ->chart([]),
         ];
     }
 }

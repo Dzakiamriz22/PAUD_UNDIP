@@ -6,6 +6,7 @@ use App\Filament\Resources\UserResource\Widgets\UserInfo;
 use App\Filament\Widgets\AccountWidget;
 use App\Filament\Widgets\ApplicationInfo;
 use App\Filament\Widgets\StatsOverview;
+use App\Filament\Widgets\FinancialReportWidget;
 use App\Models\Sekolah;
 use Awcodes\Overlook\Widgets\OverlookWidget;
 use Filament\Pages\Page;
@@ -22,6 +23,7 @@ class Dashboard extends \Filament\Pages\Dashboard
             AccountWidget::class,
             // FilamentInfoWidget::class,
             StatsOverview::class,
+            FinancialReportWidget::class,
         ];
     }
 }
