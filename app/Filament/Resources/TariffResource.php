@@ -21,6 +21,7 @@ class TariffResource extends Resource
     protected static ?string $navigationGroup = 'Keuangan';
     protected static ?string $navigationLabel = 'Tarif';
     protected static ?string $pluralLabel = 'Tarif';
+    protected static ?int $navigationSort = 2;
 
     /* =====================================================
      |  KONSTANTA

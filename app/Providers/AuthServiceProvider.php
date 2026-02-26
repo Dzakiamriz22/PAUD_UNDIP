@@ -28,7 +28,7 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\AcademicYear::class => \App\Policies\AcademicYearPolicy::class,
         \App\Models\Student::class => \App\Policies\StudentPolicy::class,
         \App\Models\SchoolClass::class => \App\Policies\SchoolClassPolicy::class,
-        \App\Models\StudentClassHistory::class => \App\Policies\StudentClassHistoryPolicy::class,
+        // StudentClassHistory resource removed; policy mapping retained if needed elsewhere
         \App\Models\Invoice::class => \App\Policies\InvoicePolicy::class,
         \App\Models\Receipt::class => \App\Policies\ReceiptPolicy::class,
         \App\Models\Tariff::class => \App\Policies\TariffPolicy::class,

@@ -16,7 +16,7 @@
      * - $topPayers: Top 5 students by payment amount
      * - $monthlyComparison: Monthly comparison data
      */
-@endphp
+@endphp 
 
 <div class="filament-page">
     <div class="space-y-6">

@@ -14,7 +14,7 @@ class ReceiptReportResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationGroup = 'Keuangan';
     protected static ?string $navigationLabel = 'Laporan Penerimaan';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 6;
 
     public static function getPages(): array
     {

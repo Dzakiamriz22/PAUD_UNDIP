@@ -40,9 +40,11 @@ class StudentsRelationManager extends RelationManager
                 ->options(function () {
                     $class = $this->ownerRecord;
 
+                    $academicYearId = $class->academic_year_id;
+
                     return Student::query()
-                        ->whereDoesntHave('classHistories', function ($q) use ($class) {
-                            $q->where('academic_year_id', $class->academic_year_id)
+                        ->whereDoesntHave('classHistories', function ($q) use ($academicYearId) {
+                            $q->where('academic_year_id', $academicYearId)
                               ->where('is_active', true);
                         })
                         ->pluck('name', 'id');
@@ -80,9 +82,12 @@ class StudentsRelationManager extends RelationManager
                     ->using(function (array $data) {
                         $class = $this->ownerRecord;
 
-                        // Nonaktifkan kelas aktif sebelumnya di tahun ajaran yang sama
+
+                        // Nonaktifkan kelas aktif sebelumnya di academic year yang sama (semester spesifik)
+                        $academicYearId = $class->academic_year_id;
+
                         StudentClassHistory::where('student_id', $data['student_id'])
-                            ->where('academic_year_id', $class->academic_year_id)
+                            ->where('academic_year_id', $academicYearId)
                             ->where('is_active', true)
                             ->update(['is_active' => false]);
 

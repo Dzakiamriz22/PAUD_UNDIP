@@ -35,6 +35,7 @@ class StudentResource extends Resource
     protected static ?string $navigationGroup = 'Akademik';
     protected static ?string $navigationLabel = 'Siswa';
     protected static ?string $pluralLabel = 'Siswa';
+    protected static ?int $navigationSort = 3;
 
     /* =====================================================
      | QUERY AKSES DATA

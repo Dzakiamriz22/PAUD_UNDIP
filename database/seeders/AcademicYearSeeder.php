@@ -57,5 +57,29 @@ class AcademicYearSeeder extends Seeder
                 'is_active' => false,
             ]
         );
+
+        // 2026/2027 - GANJIL (AKTIF)
+        AcademicYear::firstOrCreate(
+            [
+                'year' => '2026/2027',
+                'semester' => 'ganjil',
+            ],
+            [
+                'id' => (string) Str::uuid(),
+                'is_active' => true,
+            ]
+        );
+
+        // 2026/2027 - GENAP (NONAKTIF)
+        AcademicYear::firstOrCreate(
+            [
+                'year' => '2026/2027',
+                'semester' => 'genap',
+            ],
+            [
+                'id' => (string) Str::uuid(),
+                'is_active' => false,
+            ]
+        );
     }
 }

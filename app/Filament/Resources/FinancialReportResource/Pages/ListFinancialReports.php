@@ -116,6 +116,20 @@ class ListFinancialReports extends ListRecords
     }
 
     /**
+     * Livewire updated hook for granularity.
+     * When switching to yearly, clear the month; when switching to monthly,
+     * ensure a sensible default month is set.
+     */
+    public function updatedGranularity($value): void
+    {
+        if ($value === 'yearly') {
+            $this->month = null;
+        } else {
+            $this->month = $this->month ?: now()->month;
+        }
+    }
+
+    /**
      * Apply filters and compute report data
      * 
      * Performance tips:

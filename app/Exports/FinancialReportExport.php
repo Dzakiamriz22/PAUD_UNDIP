@@ -696,14 +696,8 @@ class MonthlyTransactionSheet implements FromArray, WithHeadings, WithTitle, Wit
 
     private function formatPaymentMethod(?string $method): string
     {
-        return match ($method) {
-            'cash' => 'Tunai',
-            'bank_transfer' => 'Transfer',
-            'va' => 'VA',
-            'qris' => 'QRIS',
-            'other' => 'Lainnya',
-            default => $method ?? '-',
-        };
+        // Only Virtual Account is supported; normalize any value to VA label
+        return 'Virtual Account';
     }
 }
 
@@ -1096,14 +1090,7 @@ class ComprehensiveDetailSheet implements FromArray, WithHeadings, WithTitle, Wi
 
     private function formatPaymentMethod(?string $method): string
     {
-        return match ($method) {
-            'cash' => 'Tunai',
-            'bank_transfer' => 'Transfer Bank',
-            'va' => 'Virtual Account',
-            'qris' => 'QRIS',
-            'other' => 'Lainnya',
-            default => $method ?? '-',
-        };
+        return 'Virtual Account';
     }
 
     private function formatBillingType(?string $type): string

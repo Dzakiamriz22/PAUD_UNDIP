@@ -11,7 +11,27 @@ class ClassSeeder extends Seeder
 {
     public function run(): void
     {
-        $year = AcademicYear::where('is_active', true)->firstOrFail();
+        $year = AcademicYear::where('is_active', true)->first();
+
+        // If no active academic year exists (e.g. migrations/seeds run in unexpected order),
+        // fall back to the first available year or create a sensible default to avoid crash.
+        if (! $year) {
+            $year = AcademicYear::first();
+        }
+
+        if (! $year) {
+            // Create a default academic year (current year / next year) as active
+            $current = now()->year;
+            $next = $current + 1;
+            $defaultLabel = "{$current}/{$next}";
+
+            $year = AcademicYear::create([
+                'id' => (string) Str::uuid(),
+                'year' => $defaultLabel,
+                'semester' => 'ganjil',
+                'is_active' => true,
+            ]);
+        }
 
         $categories = [
             'TK',

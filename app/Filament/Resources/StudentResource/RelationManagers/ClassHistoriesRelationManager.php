@@ -49,11 +49,8 @@ class ClassHistoriesRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('academicYear.year')
+                Tables\Columns\TextColumn::make('academicYear.label')
                     ->label('Tahun Ajaran'),
-
-                Tables\Columns\TextColumn::make('academicYear.semester')
-                    ->label('Semester'),
 
                 Tables\Columns\TextColumn::make('classRoom.code')
                     ->label('Kelas')
@@ -70,11 +67,15 @@ class ClassHistoriesRelationManager extends RelationManager
                     ->before(function (array $data) {
                         $academicYear = AcademicYear::where('is_active', true)->firstOrFail();
 
-                        // ❌ Cegah assign ke kelas yang sama
+                        // ❌ Cegah assign ke kelas yang sama dalam tahun ajaran yang sama (gabungkan ganjil & genap)
+                        $year = $academicYear->year;
+
                         $exists = StudentClassHistory::query()
                             ->where('student_id', $this->ownerRecord->id)
                             ->where('class_id', $data['class_id'])
-                            ->where('academic_year_id', $academicYear->id)
+                            ->whereHas('academicYear', function ($q) use ($year) {
+                                $q->where('year', $year);
+                            })
                             ->exists();
 
                         if ($exists) {
@@ -84,8 +85,13 @@ class ClassHistoriesRelationManager extends RelationManager
                     ->mutateFormDataUsing(function (array $data): array {
                         $academicYear = AcademicYear::where('is_active', true)->firstOrFail();
 
-                        // Nonaktifkan histori lama
+                        // Nonaktifkan histori lama hanya pada tahun ajaran yang sama (gabungkan ganjil & genap)
+                        $year = $academicYear->year;
+
                         StudentClassHistory::where('student_id', $this->ownerRecord->id)
+                            ->whereHas('academicYear', function ($q) use ($year) {
+                                $q->where('year', $year);
+                            })
                             ->where('is_active', true)
                             ->update(['is_active' => false]);
 

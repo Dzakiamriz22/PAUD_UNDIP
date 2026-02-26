@@ -4,37 +4,46 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use App\Models\Student;
-use App\Models\SchoolClass;
-use App\Models\Receipt;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class StatsOverview extends BaseWidget
 {
-    protected ?string $heading = 'Statistik PAUD';
+    protected ?string $heading = 'Ringkasan Keuangan';
 
     protected function getStats(): array
     {
-        $totalStudents = Student::count();
-        $totalClasses = SchoolClass::count();
-        $totalIncome = (float) Receipt::sum('amount_paid');
+        $now = now();
+
+        // Penerimaan (actual payments) for current month
+        $penerimaan = 0;
+        if (Schema::hasTable('receipts')) {
+            $penerimaan = (float) DB::table('receipts')
+                ->whereYear('payment_date', $now->year)
+                ->whereMonth('payment_date', $now->month)
+                ->sum('amount_paid');
+        }
+
+        // Pemasukan (invoiced) for current month
+        $pemasukan = 0;
+        if (Schema::hasTable('invoices')) {
+            $pemasukan = (float) DB::table('invoices')
+                ->whereYear('issued_at', $now->year)
+                ->whereMonth('issued_at', $now->month)
+                ->sum('total_amount');
+        }
+
+        $format = fn($v) => 'Rp ' . number_format($v, 0, ',', '.');
 
         return [
-            Stat::make('Total Siswa', (string) $totalStudents)
-                ->description('Siswa terdaftar')
-                ->descriptionIcon('heroicon-m-user-group')
-                ->color('primary')
-                ->chart([]),
-
-            Stat::make('Total Kelas', (string) $totalClasses)
-                ->description('Kelas aktif')
-                ->descriptionIcon('heroicon-m-academic-cap')
+            Stat::make('Penerimaan (Bulan ini)', $format($penerimaan))
+                ->description('Total pembayaran diterima (kwitansi)')
                 ->color('success')
                 ->chart([]),
 
-            Stat::make('Total Pemasukan', 'Rp ' . number_format($totalIncome, 0, ',', '.'))
-                ->description('Total penerimaan (semua waktu)')
-                ->descriptionIcon('heroicon-m-currency-dollar')
-                ->color('warning')
+            Stat::make('Pemasukan (Bulan ini)', $format($pemasukan))
+                ->description('Total tagihan / pemasukan yang dihasilkan')
+                ->color('primary')
                 ->chart([]),
         ];
     }
