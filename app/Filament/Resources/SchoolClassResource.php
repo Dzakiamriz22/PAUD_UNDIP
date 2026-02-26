@@ -23,6 +23,7 @@ class SchoolClassResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-building-library';
     protected static ?string $navigationGroup = 'Akademik';
     protected static ?string $navigationLabel = 'Kelas';
+    protected static ?int $navigationSort = 2;
     protected static ?string $pluralLabel = 'Kelas';
 
     

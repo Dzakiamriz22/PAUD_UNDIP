@@ -19,6 +19,7 @@ class AcademicYearResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
     protected static ?string $navigationGroup = 'Akademik';
+    protected static ?int $navigationSort = 1;
     protected static ?string $navigationLabel = 'Tahun Ajaran';
     protected static ?string $pluralLabel = 'Tahun Ajaran';
 

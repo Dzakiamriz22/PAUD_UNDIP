@@ -27,6 +27,7 @@ class ReceiptResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-check';
     protected static ?string $navigationGroup = 'Keuangan';
+    protected static ?int $navigationSort = 4;
     protected static ?string $navigationLabel = 'Kuitansi';
     protected static ?string $pluralLabel = 'Kuitansi';
 
@@ -144,13 +145,11 @@ class ReceiptResource extends Resource
                         Select::make('payment_method')
                             ->label('Metode Pembayaran')
                             ->options([
-                                'cash' => 'Tunai',
-                                'bank_transfer' => 'Transfer Bank',
                                 'va' => 'Virtual Account',
-                                'qris' => 'QRIS',
-                                'other' => 'Lainnya',
                             ])
+                            ->default('va')
                             ->required()
+                            ->disabled()
                             ->native(false),
 
                         TextInput::make('reference_number')
@@ -210,20 +209,9 @@ class ReceiptResource extends Resource
 
                 BadgeColumn::make('payment_method')
                     ->label('Metode Pembayaran')
-                    ->formatStateUsing(fn ($state) => match($state) {
-                        'cash' => 'Tunai',
-                        'bank_transfer' => 'Transfer Bank',
-                        'va' => 'Virtual Account',
-                        'qris' => 'QRIS',
-                        'other' => 'Lainnya',
-                        default => $state,
-                    })
+                    ->formatStateUsing(fn ($state) => 'Virtual Account')
                     ->colors([
-                        'success' => 'cash',
-                        'primary' => 'bank_transfer',
-                        'warning' => 'va',
-                        'info' => 'qris',
-                        'gray' => 'other',
+                        'warning' => true,
                     ]),
 
                 TextColumn::make('payment_date')
@@ -246,11 +234,7 @@ class ReceiptResource extends Resource
                 Tables\Filters\SelectFilter::make('payment_method')
                     ->label('Metode Pembayaran')
                     ->options([
-                        'cash' => 'Tunai',
-                        'bank_transfer' => 'Transfer Bank',
                         'va' => 'Virtual Account',
-                        'qris' => 'QRIS',
-                        'other' => 'Lainnya',
                     ]),
 
                 Tables\Filters\Filter::make('payment_date')
