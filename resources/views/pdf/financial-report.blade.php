@@ -70,9 +70,9 @@
             <td class="label">Jenis Pendapatan</td>
             <td class="separator">:</td>
             <td>{{ $filters['jenis_pendapatan'] ?? '-' }}</td>
-            <td class="label">Tahun Anggaran</td>
-            <td class="separator">:</td>
-            <td>{{ $filters['tahun_anggaran'] ?? '-' }}</td>
+            <td></td>
+            <td></td>
+            <td></td>
         </tr>
         <tr>
             <td class="label">Kategori</td>
@@ -207,9 +207,9 @@
             <td class="label">Jenis Pendapatan</td>
             <td class="separator">:</td>
             <td>{{ $filters['jenis_pendapatan'] ?? '-' }}</td>
-            <td class="label">Tahun Anggaran</td>
-            <td class="separator">:</td>
-            <td>{{ $filters['tahun_anggaran'] ?? '-' }}</td>
+            <td></td>
+            <td></td>
+            <td></td>
         </tr>
         <tr>
             <td class="label">Kategori</td>

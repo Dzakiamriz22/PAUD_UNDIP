@@ -29,7 +29,6 @@ class FinancialReportExport implements WithMultipleSheets
     private ?string $incomeTypeId;
     private ?string $classId;
     private string $status;
-    private ?string $academicYearId;
     private string $reportType;
 
     public function __construct(
@@ -43,7 +42,7 @@ class FinancialReportExport implements WithMultipleSheets
         ?string $incomeTypeId = null,
         ?string $classId = null,
         string $status = 'all',
-        ?string $academicYearId = null,
+        // academicYearId removed: reports are based on calendar year/month
         string $reportType = 'receipt'
     ) {
         $this->granularity = $granularity;
@@ -56,7 +55,6 @@ class FinancialReportExport implements WithMultipleSheets
         $this->incomeTypeId = $incomeTypeId;
         $this->classId = $classId;
         $this->status = $status;
-        $this->academicYearId = $academicYearId;
         $this->reportType = $reportType;
     }
 
@@ -71,8 +69,7 @@ class FinancialReportExport implements WithMultipleSheets
                 $this->year,
                 $this->incomeTypeId,
                 $this->classId,
-                $this->status,
-                $this->academicYearId
+                $this->status
             );
         } else {
             $sheets[] = new ReceiptReportSheet(
@@ -81,8 +78,7 @@ class FinancialReportExport implements WithMultipleSheets
                 $this->year,
                 $this->incomeTypeId,
                 $this->classId,
-                $this->status,
-                $this->academicYearId
+                $this->status
             );
         }
 
@@ -143,7 +139,7 @@ class RevenueInvoiceSheet implements FromArray, WithHeadings, WithTitle, WithCol
     private ?string $incomeTypeId;
     private ?string $classId;
     private string $status;
-    private ?string $academicYearId;
+    
 
     public function __construct(
         string $granularity, 
@@ -151,8 +147,7 @@ class RevenueInvoiceSheet implements FromArray, WithHeadings, WithTitle, WithCol
         ?int $year,
         ?string $incomeTypeId = null,
         ?string $classId = null,
-        string $status = 'all',
-        ?string $academicYearId = null
+        string $status = 'all'
     ) {
         $this->granularity = $granularity;
         $this->month = $month;
@@ -160,7 +155,6 @@ class RevenueInvoiceSheet implements FromArray, WithHeadings, WithTitle, WithCol
         $this->incomeTypeId = $incomeTypeId;
         $this->classId = $classId;
         $this->status = $status;
-        $this->academicYearId = $academicYearId;
     }
 
     public function headings(): array
@@ -216,9 +210,7 @@ class RevenueInvoiceSheet implements FromArray, WithHeadings, WithTitle, WithCol
             }
         }
         
-        if ($this->academicYearId) {
-            $query->where('invoices.academic_year_id', $this->academicYearId);
-        }
+        // academic year filter removed for export (reports use calendar year/month)
         
         if ($this->classId) {
             $query->where('sch.class_id', $this->classId);
@@ -317,7 +309,7 @@ class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColu
     private ?string $incomeTypeId;
     private ?string $classId;
     private string $status;
-    private ?string $academicYearId;
+    
 
     public function __construct(
         string $granularity, 
@@ -325,8 +317,7 @@ class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColu
         ?int $year,
         ?string $incomeTypeId = null,
         ?string $classId = null,
-        string $status = 'all',
-        ?string $academicYearId = null
+        string $status = 'all'
     ) {
         $this->granularity = $granularity;
         $this->month = $month;
@@ -334,7 +325,6 @@ class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColu
         $this->incomeTypeId = $incomeTypeId;
         $this->classId = $classId;
         $this->status = $status;
-        $this->academicYearId = $academicYearId;
     }
 
     public function headings(): array
@@ -397,9 +387,7 @@ class ReceiptReportSheet implements FromArray, WithHeadings, WithTitle, WithColu
             }
         }
         
-        if ($this->academicYearId) {
-            $query->where('invoices.academic_year_id', $this->academicYearId);
-        }
+        // academic year filter removed for export (reports use calendar year/month)
         
         if ($this->classId) {
             $query->where('sch.class_id', $this->classId);

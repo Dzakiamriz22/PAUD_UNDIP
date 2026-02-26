@@ -145,18 +145,7 @@
                             <option value="partial">Sebagian</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                            Tahun Anggaran
-                            <span class="text-gray-400 dark:text-gray-500" title="Tahun anggaran akademik">ⓘ</span>
-                        </label>
-                        <select wire:model="academicYearId" class="w-full border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-                            <option value="">Semua Tahun</option>
-                            @foreach($this->academicYears as $ay)
-                                <option value="{{ $ay->id }}">{{ $ay->year }} - {{ ucfirst($ay->semester) }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    {{-- Tahun Anggaran filter removed: reports use calendar year/month only --}}
                 </div>
             </div>
 

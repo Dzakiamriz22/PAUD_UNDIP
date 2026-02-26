@@ -10,6 +10,8 @@ use App\Settings\GeneralSettings;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -129,6 +131,28 @@ class ListFinancialReports extends ListRecords
         }
     }
 
+    public function updatedYear($value): void
+    {
+        if ($value === null) {
+            return;
+        }
+
+        if (is_numeric($value)) {
+            $this->year = (int) $value;
+        }
+    }
+
+    public function updatedMonth($value): void
+    {
+        if ($value === null) {
+            return;
+        }
+
+        if (is_numeric($value)) {
+            $this->month = (int) $value;
+        }
+    }
+
     /**
      * Apply filters and compute report data
      * 
@@ -139,13 +163,23 @@ class ListFinancialReports extends ListRecords
      */
     public function applyFilters(): void
     {
-        if ($this->reportType === 'revenue') {
-            $this->applyRevenueFilters();
-            return;
+        // Normalize numeric inputs coming from Livewire (may be strings)
+        if ($this->year !== null && is_numeric($this->year)) {
+            $this->year = (int) $this->year;
         }
 
-        // Base query for receipts with all filter dimensions (except income type which is handled separately)
-        $query = DB::table('receipts')
+        if ($this->month !== null && is_numeric($this->month)) {
+            $this->month = (int) $this->month;
+        }
+
+        try {
+            if ($this->reportType === 'revenue') {
+                $this->applyRevenueFilters();
+                return;
+            }
+
+            // Base query for receipts with all filter dimensions (except income type which is handled separately)
+            $query = DB::table('receipts')
             ->join('invoices', 'receipts.invoice_id', '=', 'invoices.id')
             ->join('students', 'invoices.student_id', '=', 'students.id')
             ->leftJoin('student_class_histories as sch', function($join) {
@@ -170,10 +204,7 @@ class ListFinancialReports extends ListRecords
             }
         }
 
-        // Apply category filters
-        if ($this->academicYearId) {
-            $query->where('invoices.academic_year_id', $this->academicYearId);
-        }
+        // Apply category filters (academic year filter removed)
         
         if ($this->classId) {
             $query->where('sch.class_id', $this->classId);
@@ -210,10 +241,7 @@ class ListFinancialReports extends ListRecords
                 })
                 ->where('tariffs.income_type_id', $this->incomeTypeId);
             
-            // Apply same category filters
-            if ($this->academicYearId) {
-                $receiptIdsQuery->where('invoices.academic_year_id', $this->academicYearId);
-            }
+            // Apply same category filters (academic year filter removed)
             if ($this->classId) {
                 $receiptIdsQuery->where('sch.class_id', $this->classId);
             }
@@ -277,9 +305,7 @@ class ListFinancialReports extends ListRecords
                 $detailsQuery->whereYear('receipts.payment_date', $r->year);
             }
             
-            if ($this->academicYearId) {
-                $detailsQuery->where('invoices.academic_year_id', $this->academicYearId);
-            }
+            // academic year filter removed for details query
             
             if ($this->classId) {
                 $detailsQuery->where('sch.class_id', $this->classId);
@@ -417,10 +443,7 @@ class ListFinancialReports extends ListRecords
             }
         }
 
-        // Apply category filters
-        if ($this->academicYearId) {
-            $receiptBase->where('invoices.academic_year_id', $this->academicYearId);
-        }
+        // Apply category filters (academic year filter removed)
         
         if ($this->classId) {
             $receiptBase->where('sch.class_id', $this->classId);
@@ -493,10 +516,7 @@ class ListFinancialReports extends ListRecords
             }
         }
         
-        // Apply category filters
-        if ($this->academicYearId) {
-            $validReceiptIdsQuery->where('invoices.academic_year_id', $this->academicYearId);
-        }
+        // Apply category filters (academic year filter removed)
         
         if ($this->classId) {
             $validReceiptIdsQuery->where('student_class_histories.class_id', $this->classId);
@@ -556,10 +576,7 @@ class ListFinancialReports extends ListRecords
             }
         }
         
-        // Apply category filters
-        if ($this->academicYearId) {
-            $validInvoiceIdsQuery->where('invoices.academic_year_id', $this->academicYearId);
-        }
+        // Apply category filters (academic year filter removed)
         
         if ($this->classId) {
             $validInvoiceIdsQuery->where('student_class_histories.class_id', $this->classId);
@@ -614,19 +631,36 @@ class ListFinancialReports extends ListRecords
         });
         
         // Monthly comparison for current year
-        if ($this->granularity === 'monthly') {
-            $this->monthlyComparison = [];
-            for ($m = 1; $m <= 12; $m++) {
-                $total = DB::table('receipts')
-                    ->whereYear('payment_date', $this->year)
-                    ->whereMonth('payment_date', $m)
-                    ->sum('amount_paid');
-                $this->monthlyComparison[] = [
-                    'month' => $m,
-                    'month_name' => \DateTime::createFromFormat('!m', $m)->format('M'),
-                    'total' => (float) $total,
-                ];
+            if ($this->granularity === 'monthly') {
+                $this->monthlyComparison = [];
+                for ($m = 1; $m <= 12; $m++) {
+                    $total = DB::table('receipts')
+                        ->whereYear('payment_date', $this->year)
+                        ->whereMonth('payment_date', $m)
+                        ->sum('amount_paid');
+                    $this->monthlyComparison[] = [
+                        'month' => $m,
+                        'month_name' => \DateTime::createFromFormat('!m', $m)->format('M'),
+                        'total' => (float) $total,
+                    ];
+                }
             }
+        } catch (Throwable $e) {
+            Log::error('Financial report filter failed', [
+                'message' => $e->getMessage(),
+                'year' => $this->year,
+                'month' => $this->month,
+                'granularity' => $this->granularity,
+                'academicYearId' => $this->academicYearId,
+                'classId' => $this->classId,
+                'incomeTypeId' => $this->incomeTypeId,
+                'status' => $this->status,
+            ]);
+
+            report($e);
+
+            $this->dispatchBrowserEvent('notify', ['type' => 'danger', 'message' => 'Terjadi kesalahan saat memproses laporan. Periksa log untuk detail.']);
+            return;
         }
     }
 
@@ -655,9 +689,7 @@ class ListFinancialReports extends ListRecords
             }
         }
 
-        if ($this->academicYearId) {
-            $query->where('invoices.academic_year_id', $this->academicYearId);
-        }
+        // academic year filter removed for revenue queries
 
         if ($this->classId) {
             $query->where('sch.class_id', $this->classId);
@@ -699,9 +731,7 @@ class ListFinancialReports extends ListRecords
                 }
             }
 
-            if ($this->academicYearId) {
-                $invoiceIdsQuery->where('invoices.academic_year_id', $this->academicYearId);
-            }
+            // academic year filter removed for invoiceIdsQuery
             if ($this->classId) {
                 $invoiceIdsQuery->where('sch.class_id', $this->classId);
             }
@@ -749,9 +779,7 @@ class ListFinancialReports extends ListRecords
                 $detailsQuery->whereYear('invoices.issued_at', $r->year);
             }
 
-            if ($this->academicYearId) {
-                $detailsQuery->where('invoices.academic_year_id', $this->academicYearId);
-            }
+            // academic year filter removed for revenue details query
             if ($this->classId) {
                 $detailsQuery->where('sch.class_id', $this->classId);
             }
@@ -833,9 +861,7 @@ class ListFinancialReports extends ListRecords
                 $discountQuery->whereYear('issued_at', $this->year);
             }
         }
-        if ($this->academicYearId) {
-            $discountQuery->where('academic_year_id', $this->academicYearId);
-        }
+        // academic year filter removed for discount query
         if ($this->status !== 'all') {
             $discountQuery->where('status', $this->status);
         }
@@ -906,9 +932,7 @@ class ListFinancialReports extends ListRecords
             }
         }
 
-        if ($this->academicYearId) {
-            $invoiceBase->where('invoices.academic_year_id', $this->academicYearId);
-        }
+        // academic year filter removed for invoice base
         if ($this->classId) {
             $invoiceBase->where('sch.class_id', $this->classId);
         }
@@ -994,11 +1018,7 @@ class ListFinancialReports extends ListRecords
             default => 'All [Belum Bayar/Lunas/Refund]'
         };
         
-        $academicYearLabel = $this->year;
-        if ($this->academicYearId) {
-            $academicYear = \App\Models\AcademicYear::find($this->academicYearId);
-            $academicYearLabel = $academicYear ? $academicYear->label : $this->year;
-        }
+        // academic year removed from PDF filters; using calendar year/month only
 
         $data = [
             'filters' => [
@@ -1008,7 +1028,6 @@ class ListFinancialReports extends ListRecords
                 'kelas' => $className,
                 'periode_transaksi' => $periodRange,
                 'status' => $statusLabel,
-                'tahun_anggaran' => $academicYearLabel,
                 'tanggal_cetak' => now()->format('d/m/Y'),
                 'sistem_bayar' => 'Auto system',
                 'bendahara' => auth()->user()?->name ?? '-',
@@ -1105,9 +1124,7 @@ class ListFinancialReports extends ListRecords
             }
         }
         
-        if ($this->academicYearId) {
-            $query->where('invoices.academic_year_id', $this->academicYearId);
-        }
+        // academic year filter removed for buildRevenueRows
         
         if ($this->classId) {
             $query->where('sch.class_id', $this->classId);
@@ -1196,9 +1213,7 @@ class ListFinancialReports extends ListRecords
             }
         }
         
-        if ($this->academicYearId) {
-            $query->where('invoices.academic_year_id', $this->academicYearId);
-        }
+        // academic year filter removed for buildReceiptRows
         
         if ($this->classId) {
             $query->where('sch.class_id', $this->classId);
@@ -1282,12 +1297,7 @@ class ListFinancialReports extends ListRecords
             };
         }
         
-        if ($this->academicYearId) {
-            $academicYear = \App\Models\AcademicYear::find($this->academicYearId);
-            $summary['Tahun Anggaran'] = $academicYear 
-                ? $academicYear->year . ' - ' . ucfirst($academicYear->semester)
-                : 'Semua';
-        }
+        // Removed Tahun Anggaran filter from summary (report uses calendar year/month only)
 
         if ($this->reportType === 'revenue') {
             $summary['Total Tagihan'] = (float) $this->currentPeriodTotal;
@@ -1316,7 +1326,6 @@ class ListFinancialReports extends ListRecords
             $this->incomeTypeId,
             $this->classId,
             $this->status,
-            $this->academicYearId,
             $this->reportType
         );
 
