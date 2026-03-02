@@ -132,7 +132,9 @@ class StudentResource extends Resource
                 TextColumn::make('activeClass.classRoom.code')
                     ->label('Kelas Aktif')
                     ->badge()
-                    ->color('success'),
+                    ->color('success')
+                    ->searchable()
+                    ->sortable(),
 
                 BadgeColumn::make('gender')
                     ->label('JK')
@@ -155,6 +157,28 @@ class StudentResource extends Resource
                         'inactive' => 'Nonaktif',
                         'graduated' => 'Lulus',
                         default => $state,
+                    }),
+            ])
+
+            /* ================= FILTERS ================= */
+            ->filters([
+                Tables\Filters\SelectFilter::make('active_class_id')
+                    ->label('Kelas Aktif')
+                    ->options(fn () =>
+                        SchoolClass::with('academicYear')
+                            ->whereHas('academicYear', fn ($q) => $q->where('is_active', true))
+                            ->get()
+                            ->mapWithKeys(fn ($class) => [
+                                $class->id => "{$class->code_label} ({$class->academicYear->label})",
+                            ])
+                    )
+                    ->searchable()
+                    ->query(function (Builder $query, $value = null) {
+                        if ($value !== null) {
+                            $query->whereHas('activeClass', function ($q) use ($value) {
+                                $q->where('class_id', $value);
+                            });
+                        }
                     }),
             ])
 
