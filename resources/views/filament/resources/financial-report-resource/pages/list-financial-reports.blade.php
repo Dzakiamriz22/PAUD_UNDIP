@@ -26,7 +26,7 @@
                         Metode: VA BNI
                     </span>
                     <span class="text-gray-500 dark:text-gray-400">
-                        {{ now()->format('d M Y, H:i') }}
+                        {{ \Carbon\Carbon::now()->locale('id')->isoFormat('D MMM Y, HH:mm') }}
                     </span>
                 </div>
             </div>
@@ -91,7 +91,7 @@
                         </label>
                         <select wire:model="month" class="w-full border-gray-300 dark:border-gray-600 rounded-md px-3 py-1.5 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 {{ $granularity === 'yearly' ? 'opacity-50' : '' }}" @if($granularity === 'yearly') disabled @endif>
                             @foreach(range(1,12) as $m)
-                                <option value="{{ $m }}">{{ \DateTime::createFromFormat('!m', $m)->format('F') }}</option>
+                                <option value="{{ $m }}">{{ \Carbon\Carbon::createFromFormat('!m', $m)->locale('id')->isoFormat('MMMM') }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -299,7 +299,7 @@
                                 <tr>
                                     <td class="py-2.5 text-gray-900 dark:text-gray-100 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onclick="toggleDetail('detail-{{ $index }}')">
                                         @if($r['month'])
-                                            {{ \DateTime::createFromFormat('!m', $r['month'])->format('M') }} {{ $r['year'] }}
+                                            {{ \Carbon\Carbon::createFromFormat('!m', $r['month'])->locale('id')->isoFormat('MMM') }} {{ $r['year'] }}
                                         @else
                                             {{ $r['year'] }}
                                         @endif
@@ -360,13 +360,13 @@
                                                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                                                                 </svg>
-                                                                                <span>Invoice: {{ \Carbon\Carbon::parse($detail['issued_at'])->format('d M Y') }}</span>
+                                                                                <span>Invoice: {{ \Carbon\Carbon::parse($detail['issued_at'])->locale('id')->isoFormat('D MMM Y') }}</span>
                                                                             </div>
                                                                             <div class="flex items-center gap-1.5">
                                                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                                                                 </svg>
-                                                                                <span>Jatuh Tempo: {{ $detail['due_date'] ? \Carbon\Carbon::parse($detail['due_date'])->format('d M Y') : '-' }}</span>
+                                                                                <span>Jatuh Tempo: {{ $detail['due_date'] ? \Carbon\Carbon::parse($detail['due_date'])->locale('id')->isoFormat('D MMM Y') : '-' }}</span>
                                                                             </div>
                                                                             @php
                                                                                 $statusLabel = match($detail['status']) {
