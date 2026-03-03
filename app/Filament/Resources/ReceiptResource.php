@@ -28,6 +28,38 @@ class ReceiptResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-document-check';
     protected static ?string $navigationGroup = 'Keuangan';
     protected static ?int $navigationSort = 4;
+
+    /* =====================================================
+     | QUERY SCOPE
+     ===================================================== */
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = auth()->user();
+
+        if (
+            $user->isSuperAdmin()
+            || $user->hasRole('admin')
+            || $user->isKepsek()
+            || $user->isBendahara()
+            || $user->hasRole('auditor')
+            || $user->hasRole('operator')
+        ) {
+            return $query;
+        }
+
+        if ($user->isGuru()) {
+            return $query->whereHas('invoice.student', function ($q) use ($user) {
+                $q->whereHas('activeClass', function ($q2) use ($user) {
+                    $q2->whereHas('classRoom', function ($c) use ($user) {
+                        $c->where('homeroom_teacher_id', $user->id);
+                    });
+                });
+            });
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
     protected static ?string $navigationLabel = 'Kuitansi';
     protected static ?string $pluralLabel = 'Kuitansi';
 
@@ -51,9 +83,18 @@ class ReceiptResource extends Resource
                                 }
                                 
                                 // Saat create, tampilkan invoice yang belum punya receipt
-                                return Invoice::with('student')
-                                    ->whereDoesntHave('receipt')
-                                    ->get()
+                                $user = auth()->user();
+                                $invoices = Invoice::with('student')->whereDoesntHave('receipt');
+                                if ($user?->isGuru()) {
+                                    $invoices = $invoices->whereHas('student', function ($q) use ($user) {
+                                        $q->whereHas('activeClass', function ($q2) use ($user) {
+                                            $q2->whereHas('classRoom', function ($c) use ($user) {
+                                                $c->where('homeroom_teacher_id', $user->id);
+                                            });
+                                        });
+                                    });
+                                }
+                                return $invoices->get()
                                     ->mapWithKeys(function ($invoice) {
                                         return [$invoice->id => $invoice->invoice_number . ' - ' . ($invoice->student->name ?? 'N/A')];
                                     });
@@ -184,7 +225,7 @@ class ReceiptResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->recordUrl(null)
+            // ->recordUrl(null)
             ->columns([
                 TextColumn::make('receipt_number')
                     ->label('Nomor Kuitansi')

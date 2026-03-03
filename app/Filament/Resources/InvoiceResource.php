@@ -36,6 +36,38 @@ class InvoiceResource extends Resource
     protected static ?string $navigationLabel = 'Invoice';
     protected static ?int $navigationSort = 3;
 
+    /* =====================================================
+     | QUERY SCOPE
+     ===================================================== */
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = auth()->user();
+
+        if (
+            $user->isSuperAdmin()
+            || $user->hasRole('admin')
+            || $user->isKepsek()
+            || $user->isBendahara()
+            || $user->hasRole('auditor')
+            || $user->hasRole('operator')
+        ) {
+            return $query;
+        }
+
+        if ($user->isGuru()) {
+            return $query->whereHas('student', function ($q) use ($user) {
+                $q->whereHas('activeClass', function ($q2) use ($user) {
+                    $q2->whereHas('classRoom', function ($c) use ($user) {
+                        $c->where('homeroom_teacher_id', $user->id);
+                    });
+                });
+            });
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
+
     /* ===============================
      | FORM
      =============================== */
