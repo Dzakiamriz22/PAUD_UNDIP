@@ -24,10 +24,23 @@
 
     .payment-logo img { max-width: 88px; height: auto; display:block }
     .payment-school { font-size: 13px; font-weight:700; margin:0 }
-    .payment-school small { display:block; font-weight:400; color:#6b7280 }
+    .payment-subtitle { font-size: 11px; font-weight:600; margin:0; }
 
     .payment-title { text-align: right; }
     .payment-title h2 { margin:0; font-size:16px; font-weight:700 }
+
+    /* address aligned left, larger and bold */
+    .payment-address { font-size:14px; font-weight:700; color:#374151; padding-top:4px; text-align:left; }
+
+    /* dark mode overrides for header elements */
+    .dark .payment-school,
+    .dark .payment-subtitle,
+    .dark .payment-title h2,
+    .dark .payment-address {
+        color: #ffffff;
+    }
+    /* dark mode table borders remain light so they don’t overpower black background */
+    .dark table.payment th, .dark table.payment td { border-color: #e6e9ee }
     .status-unpaid { color: #dc2626; font-weight:700; font-size:12px }
     .status-paid { color: #16a34a; font-weight:700; font-size:12px }
 
@@ -37,7 +50,8 @@
 
     /* Items table */
     table.payment { width:100%; border-collapse: collapse; margin-bottom:8px; font-size:11px }
-    table.payment th, table.payment td { border:1px solid #e6e9ee; padding:6px 6px }
+    /* use solid black borders in light/white mode for clarity */
+    table.payment th, table.payment td { border:1px solid #000; padding:6px 6px }
     table.payment th { text-align:left; font-weight:600; font-size:11px }
     table.payment td { vertical-align: middle }
     table.payment td.amount { text-align:right; white-space:nowrap }

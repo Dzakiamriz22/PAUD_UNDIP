@@ -8,10 +8,21 @@
         $statusClass = $isPaid ? 'status-paid' : 'status-unpaid';
     @endphp
 
+    @php
+        // for browser preview use asset URL so image loads normally
+        $webLogo = null;
+        if (file_exists(public_path('images/LOGO-PAUD-PERMATA.png'))) {
+            $webLogo = asset('images/LOGO-PAUD-PERMATA.png');
+        } elseif (file_exists(public_path('images/logo.png'))) {
+            $webLogo = asset('images/logo.png');
+        }
+    @endphp
+
     @include('partials.payment-header', [
         'title' => 'INVOICE',
         'statusText' => $statusText,
         'statusClass' => $statusClass,
+        'logoFile' => $webLogo,
     ])
 
     <table class="info-table">

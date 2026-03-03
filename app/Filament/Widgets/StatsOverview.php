@@ -35,6 +35,16 @@ class StatsOverview extends BaseWidget
 
         $format = fn($v) => 'Rp ' . number_format($v, 0, ',', '.');
 
+        // count of currently active students (having an active class history)
+        $activeStudents = 0;
+        if (Schema::hasTable('students') && Schema::hasTable('student_class_histories')) {
+            $activeStudents = DB::table('students')
+                ->join('student_class_histories', 'students.id', '=', 'student_class_histories.student_id')
+                ->where('student_class_histories.is_active', true)
+                ->distinct('students.id')
+                ->count('students.id');
+        }
+
         return [
             Stat::make('Penerimaan (Bulan ini)', $format($penerimaan))
                 ->description('Total pembayaran diterima (kwitansi)')
@@ -44,6 +54,11 @@ class StatsOverview extends BaseWidget
             Stat::make('Pemasukan (Bulan ini)', $format($pemasukan))
                 ->description('Total tagihan / pemasukan yang dihasilkan')
                 ->color('primary')
+                ->chart([]),
+
+            Stat::make('Siswa Aktif', number_format($activeStudents))
+                ->description('Jumlah siswa dengan kelas aktif')
+                ->color('secondary')
                 ->chart([]),
         ];
     }
