@@ -53,7 +53,7 @@ class TariffResource extends Resource
 
     public static function canEdit($record): bool
     {
-        return Auth::user()->hasRole(['admin', 'bendahara'])
+        return Auth::user()->hasAnyRole(['admin', 'bendahara', config('filament-shield.super_admin.name')])
             && in_array($record->status, ['pending', 'rejected']);
     }
 
@@ -163,12 +163,30 @@ class TariffResource extends Resource
                         default    => $state,
                     }),
 
+                // Tampilkan cuplikan alasan penolakan jika status = rejected
+                Tables\Columns\TextColumn::make('rejection_note')
+                    ->label('Alasan Penolakan')
+                    ->toggleable()
+                    ->wrap()
+                    ->limit(80)
+                    ->visible(fn ($record) => $record?->status === 'rejected'),
+
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Aktif')
                     ->boolean(),
             ])
 
             ->actions([
+                Tables\Actions\Action::make('lihat_alasan')
+                    ->label('Lihat Alasan')
+                    ->icon('heroicon-o-chat-bubble-left-right')
+                    ->color('secondary')
+                    ->modal()
+                    ->modalHeading('Alasan Penolakan')
+                    ->modalDescription(fn (Tariff $record) => $record->rejection_note)
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('OK')
+                    ->visible(fn (Tariff $record) => $record->status === 'rejected'),
                 /* ===== APPROVE ===== */
                 Tables\Actions\Action::make('approve')
                     ->label('Approve')
@@ -176,7 +194,7 @@ class TariffResource extends Resource
                     ->color('success')
                     ->visible(fn (Tariff $record) =>
                         $record->status === 'pending'
-                        && Auth::user()->hasRole('kepala_sekolah')
+                        && Auth::user()->hasAnyRole(['kepala_sekolah', config('filament-shield.super_admin.name')])
                     )
                     ->action(fn (Tariff $record) => $record->update([
                         'status'         => 'approved',
@@ -192,7 +210,7 @@ class TariffResource extends Resource
                     ->color('danger')
                     ->visible(fn (Tariff $record) =>
                         $record->status === 'pending'
-                        && Auth::user()->hasRole('kepala_sekolah')
+                        && Auth::user()->hasAnyRole(['kepala_sekolah', config('filament-shield.super_admin.name')])
                     )
                     ->form([
                         Forms\Components\Textarea::make('rejection_note')
@@ -204,6 +222,54 @@ class TariffResource extends Resource
                         $record->update([
                             'status'         => 'rejected',
                             'rejection_note' => $data['rejection_note'],
+                        ]);
+                    }),
+
+                /* ===== PERBAIKI / AJUKAN ULANG ===== */
+                Tables\Actions\Action::make('perbaiki')
+                    ->label('Perbaiki / Ajukan Ulang')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('primary')
+                    ->visible(fn (Tariff $record) =>
+                        $record->status === 'rejected' && (
+                            Auth::id() === $record->proposed_by
+                            || Auth::user()->hasAnyRole(['admin', 'bendahara', config('filament-shield.super_admin.name')])
+                        )
+                    )
+                    ->modal()
+                    ->modalHeading('Perbaiki / Ajukan Ulang Tarif')
+                    ->form([
+                        Forms\Components\Select::make('income_type_id')
+                            ->label('Jenis Pendapatan')
+                            ->relationship('incomeType', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+
+                        Forms\Components\Select::make('class_category')
+                            ->label('Kategori Kelas')
+                            ->options(self::CLASS_CATEGORIES)
+                            ->required(),
+
+                        Forms\Components\Select::make('billing_type')
+                            ->label('Jenis Pembayaran')
+                            ->options(self::BILLING_TYPES)
+                            ->required(),
+
+                        Forms\Components\TextInput::make('amount')
+                            ->label('Nominal Tarif')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->required(),
+                    ])
+                    ->action(function (Tariff $record, array $data) {
+                        $record->update([
+                            'income_type_id' => $data['income_type_id'],
+                            'class_category' => $data['class_category'],
+                            'billing_type'   => $data['billing_type'],
+                            'amount'         => $data['amount'],
+                            'status'         => 'pending',
+                            'rejection_note' => null,
                         ]);
                     }),
 
@@ -233,7 +299,7 @@ class TariffResource extends Resource
                 /* ===== EDIT (AJUKAN ULANG) ===== */
                 Tables\Actions\EditAction::make()
                     ->visible(fn (Tariff $record) =>
-                        Auth::user()->hasRole(['admin', 'bendahara'])
+                        Auth::user()->hasAnyRole(['admin', 'bendahara', config('filament-shield.super_admin.name')])
                         && in_array($record->status, ['pending', 'rejected'])
                     )
                     ->mutateFormDataUsing(function (array $data) {
