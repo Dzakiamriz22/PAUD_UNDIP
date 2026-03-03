@@ -16,7 +16,9 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'PAUD Permata'),
+    // subtitle can be set in .env but defaults to UNDIP if omitted
+    'subtitle' => env('APP_SUBTITLE', 'UNIVERSITAS DIPONEGORO'),
     'address' => env('APP_ADDRESS', 'Alamat Sekolah'),
 
     /*
