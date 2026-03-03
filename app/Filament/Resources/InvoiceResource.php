@@ -104,7 +104,17 @@ class InvoiceResource extends Resource
 
                             Forms\Components\Select::make('class_id')
                                 ->label('Pilih Kelas')
-                                ->options(SchoolClass::pluck('code', 'id'))
+                                ->options(function (callable $get) {
+                                    $yearId = $get('academic_year_id') ?? \App\Models\AcademicYear::where('is_active', true)->first()?->id;
+                                    if (! $yearId) {
+                                        return [];
+                                    }
+
+                                    return \App\Models\SchoolClass::where('academic_year_id', $yearId)
+                                        ->get()
+                                        ->mapWithKeys(fn($c) => [$c->id => $c->code_label])
+                                        ->toArray();
+                                })
                                 ->required()
                                 ->reactive()
                                 ->live()

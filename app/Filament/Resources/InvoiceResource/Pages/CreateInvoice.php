@@ -282,4 +282,17 @@ class CreateInvoice extends CreateRecord
             $this->redirect(route('invoices.download_temp', ['filename' => basename($filePath)]));
             return;
     }
+
+    /**
+     * Hapus tombol Create / Create Another di bawah form agar submit
+     * hanya tersedia pada langkah terakhir wizard.
+     *
+     * @return array
+     */
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getCancelFormAction(),
+        ];
+    }
 }
