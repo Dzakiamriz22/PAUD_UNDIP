@@ -187,6 +187,26 @@ class TariffResource extends Resource
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('OK')
                     ->visible(fn (Tariff $record) => $record->status === 'rejected'),
+                    /* ===== EDIT ALASAN (KEPALA SEKOLAH) ===== */
+                    Tables\Actions\Action::make('edit_alasan')
+                        ->label('Edit Alasan')
+                        ->icon('heroicon-o-pencil')
+                        ->color('primary')
+                        ->visible(fn (Tariff $record) =>
+                            $record->status === 'rejected'
+                            && Auth::user()->hasRole('kepala_sekolah')
+                        )
+                        ->form([
+                            Forms\Components\Textarea::make('rejection_note')
+                                ->label('Alasan Penolakan')
+                                ->required()
+                                ->rows(4),
+                        ])
+                        ->action(function (Tariff $record, array $data) {
+                            $record->update([
+                                'rejection_note' => $data['rejection_note'],
+                            ]);
+                        }),
                 /* ===== APPROVE ===== */
                 Tables\Actions\Action::make('approve')
                     ->label('Approve')
@@ -296,17 +316,7 @@ class TariffResource extends Resource
                         ])
                     ),
 
-                /* ===== EDIT (AJUKAN ULANG) ===== */
-                Tables\Actions\EditAction::make()
-                    ->visible(fn (Tariff $record) =>
-                        Auth::user()->hasAnyRole(['admin', 'bendahara', config('filament-shield.super_admin.name')])
-                        && in_array($record->status, ['pending', 'rejected'])
-                    )
-                    ->mutateFormDataUsing(function (array $data) {
-                        $data['status'] = 'pending';
-                        $data['rejection_note'] = null; // reset catatan
-                        return $data;
-                    }),
+                // Edit action removed: use 'Perbaiki / Ajukan Ulang' instead
 
                 /* ===== DELETE ===== */
                 Tables\Actions\DeleteAction::make()

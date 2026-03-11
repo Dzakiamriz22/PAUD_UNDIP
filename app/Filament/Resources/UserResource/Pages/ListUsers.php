@@ -43,7 +43,7 @@ class ListUsers extends ListRecords
         $tabs = [
             'all' => Tab::make()->query(fn($query) => $query->withoutTrashed()),
             'admin' => Tab::make()->query(fn($query) => $query->withoutTrashed()->with('roles')->whereRelation('roles', 'name', '=', 'admin')),
-            'operator' => Tab::make()->query(fn($query) => $query->withoutTrashed()->with('roles')->whereRelation('roles', 'name', '=', 'operator')),
+            'auditor' => Tab::make()->query(fn($query) => $query->withoutTrashed()->with('roles')->whereRelation('roles', 'name', '=', 'auditor')),
             'trashed' => Tab::make()->icon('heroicon-o-trash')->query(fn($query) => $query->onlyTrashed()),
         ];
 
