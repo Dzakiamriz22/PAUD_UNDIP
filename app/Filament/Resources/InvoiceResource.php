@@ -82,7 +82,7 @@ class InvoiceResource extends Resource
         return $form->schema([
             Wizard::make([
                 /* STEP 1: TARGET SISWA */
-                Wizard\Step::make('Target Siswa')
+                Wizard\Step::make('Target Siswa')->id('target_siswa')
                     ->description('Pilih kelas dan daftar siswa')
                     ->icon('heroicon-o-users')
                     ->schema([
@@ -139,7 +139,7 @@ class InvoiceResource extends Resource
                     ]),
 
                 /* STEP 2: RINCIAN BIAYA */
-                Wizard\Step::make('Rincian Biaya')
+                Wizard\Step::make('Rincian Biaya')->id('rincian_biaya')
                     ->schema([
                         Forms\Components\Repeater::make('tariff_items')
                             ->label('Item Tagihan')
@@ -462,7 +462,7 @@ class InvoiceResource extends Resource
                     ]),
 
                 /* STEP 3: KONFIGURASI & PREVIEW */
-                Wizard\Step::make('Konfigurasi & Review')
+                Wizard\Step::make('Konfigurasi & Review')->id('konfigurasi_review')
                     ->description('Finalisasi tagihan')
                     ->icon('heroicon-o-document-check')
                     ->schema([
@@ -751,7 +751,7 @@ class InvoiceResource extends Resource
                             }),
                             ]),
                     ]),
-            ])->columnSpanFull()
+            ])->persistStepInQueryString('step')->columnSpanFull()
         ]);
     }
 

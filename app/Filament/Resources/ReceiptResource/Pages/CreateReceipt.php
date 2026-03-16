@@ -44,6 +44,22 @@ class CreateReceipt extends CreateRecord
         // Pastikan receipt_number tidak di-set, biarkan booted() yang generate
         unset($data['receipt_number']);
 
+        // Jika payment_method tidak di-set oleh form (mis. dari mount), tetapkan default 'va'
+        if (empty($data['payment_method'])) {
+            if (!empty($data['invoice_id'])) {
+                $invoiceForMethod = Invoice::find($data['invoice_id']);
+                if ($invoiceForMethod && !empty($invoiceForMethod->va_number)) {
+                    $data['payment_method'] = 'va';
+                    $data['reference_number'] = $data['reference_number'] ?? $invoiceForMethod->va_number;
+                } else {
+                    // Default according to user's preference
+                    $data['payment_method'] = 'va';
+                }
+            } else {
+                $data['payment_method'] = 'va';
+            }
+        }
+
         // Validasi: Pastikan invoice belum punya receipt
         if (isset($data['invoice_id'])) {
             $invoice = Invoice::with('receipt')->find($data['invoice_id']);
