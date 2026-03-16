@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class Tariff extends Model
@@ -50,12 +52,23 @@ class Tariff extends Model
     }
 
     /* ================= UUID AUTO ================= */
-    protected static function booted()
+    protected static function booted(): void
     {
         static::creating(function ($model) {
             if (empty($model->id)) {
                 $model->id = (string) Str::uuid();
             }
+        });
+
+        static::created(function (Tariff $model) {
+            $model->approvalHistories()->create([
+                'action' => 'submitted',
+                'from_status' => null,
+                'to_status' => $model->status,
+                'note' => 'Tarif diajukan untuk persetujuan.',
+                'acted_by' => $model->proposed_by ?? Auth::id(),
+                'acted_at' => now(),
+            ]);
         });
     }
 
@@ -74,5 +87,10 @@ class Tariff extends Model
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function approvalHistories(): HasMany
+    {
+        return $this->hasMany(TariffApprovalHistory::class)->orderByDesc('acted_at');
     }
 }
