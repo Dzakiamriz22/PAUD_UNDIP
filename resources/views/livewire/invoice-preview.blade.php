@@ -117,8 +117,7 @@
 
     @include('partials.payment-footer', [
         'signatureDate' => now()->format('d F Y'),
-        'signatureName' => $invoice->creator->username ?? 'Bendahara',
-        'signatureRole' => 'Petugas / Bendahara',
+        'signatureRole' => 'Bendahara',
     ])
 
 </div>
