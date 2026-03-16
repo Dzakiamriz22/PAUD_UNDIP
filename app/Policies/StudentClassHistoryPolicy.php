@@ -26,7 +26,7 @@ class StudentClassHistoryPolicy
         }
 
         // Super roles → allow all
-        if ($user->isSuperAdmin() || $user->hasRole('admin')) {
+        if ($user->isSuperAdmin() || $user->hasRole('operator')) {
             return true;
         }
 
@@ -49,7 +49,7 @@ class StudentClassHistoryPolicy
     public function create(User $user): bool
     {
         // Only admin and super_admin can create
-        return $user->isSuperAdmin() || $user->hasRole('admin');
+        return $user->isSuperAdmin() || $user->hasRole('operator');
     }
 
     /**
@@ -58,7 +58,7 @@ class StudentClassHistoryPolicy
     public function update(User $user, StudentClassHistory $history): bool
     {
         // Only admin can update
-        return $user->isSuperAdmin() || $user->hasRole('admin');
+        return $user->isSuperAdmin() || $user->hasRole('operator');
     }
 
     /**

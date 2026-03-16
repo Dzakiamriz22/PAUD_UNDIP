@@ -35,11 +35,10 @@ class SchoolClassResource extends Resource
         // Super roles → semua kelas
         if (
             $user->isSuperAdmin()
-            || $user->hasRole('admin')
+            || $user->hasRole('operator')
             || $user->isKepsek()
             || $user->isBendahara()
             || $user->hasRole('auditor')
-            || $user->hasRole('operator')
         ) {
             return $query;
         }
@@ -153,7 +152,7 @@ class SchoolClassResource extends Resource
                 Tables\Actions\EditAction::make()
                     ->visible(fn () =>
                         auth()->user()->isSuperAdmin()
-                        || auth()->user()->hasRole('admin')
+                        || auth()->user()->hasRole('operator')
                     ),
             ])
             ->bulkActions([
@@ -161,7 +160,7 @@ class SchoolClassResource extends Resource
                     ->label('Hapus (Kosongkan Kelas)')
                     ->visible(fn () =>
                         auth()->user()->isSuperAdmin()
-                        || auth()->user()->hasRole('admin')
+                        || auth()->user()->hasRole('operator')
                     )
                     ->before(function ($records) {
                         foreach ($records as $class) {

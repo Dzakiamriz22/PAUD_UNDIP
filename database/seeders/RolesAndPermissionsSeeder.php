@@ -30,7 +30,6 @@ class RolesAndPermissionsSeeder extends Seeder
          */
         $roles = [
             'super_admin',
-            'admin',
             'operator',
             'auditor',
 

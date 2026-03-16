@@ -206,7 +206,7 @@ class AdminPermissionsSeeder extends Seeder
         }
 
         // Get admin role
-        $adminRole = Role::where('name', 'admin')->firstOrFail();
+        $adminRole = Role::where('name', 'operator')->firstOrFail();
         $superAdminRole = Role::where('name', 'super_admin')->first();
 
         // Assign all permissions to admin role

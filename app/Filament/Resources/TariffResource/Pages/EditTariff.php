@@ -19,7 +19,7 @@ class EditTariff extends EditRecord
         // Jika tarif sebelumnya ditolak dan diedit bendahara/admin
         if (
             $this->record->status === 'rejected'
-            && Auth::user()->hasRole(['admin', 'bendahara'])
+            && Auth::user()->hasRole(['operator', 'bendahara'])
         ) {
             $data['status'] = 'pending';     // ajukan ulang
             $data['is_active'] = false;      // pastikan tidak aktif

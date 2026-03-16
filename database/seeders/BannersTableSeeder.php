@@ -17,7 +17,7 @@ class BannersTableSeeder extends Seeder
 
         // Get admin users for creator/updater fields
         $adminIds = User::whereHas('roles', function ($query) {
-            $query->where('name', '=', 'admin');
+            $query->where('name', '=', 'operator');
         })->pluck('id')->toArray();
 
         // If no admins found, fallback to any users

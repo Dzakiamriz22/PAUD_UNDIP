@@ -20,7 +20,7 @@ class StudentsRelationManager extends RelationManager
     public function canCreate(): bool
     {
         return auth()->user()->isSuperAdmin()
-            || auth()->user()->hasRole('admin');
+            || auth()->user()->hasRole('operator');
     }
 
     /**
@@ -77,7 +77,7 @@ class StudentsRelationManager extends RelationManager
                     ->label('Assign Siswa')
                     ->visible(fn () =>
                         auth()->user()->isSuperAdmin()
-                        || auth()->user()->hasRole('admin')
+                        || auth()->user()->hasRole('operator')
                     )
                     ->using(function (array $data) {
                         $class = $this->ownerRecord;
@@ -108,7 +108,7 @@ class StudentsRelationManager extends RelationManager
                     ->requiresConfirmation()
                     ->visible(fn () =>
                         auth()->user()->isSuperAdmin()
-                        || auth()->user()->hasRole('admin')
+                        || auth()->user()->hasRole('operator')
                     )
                     ->action(fn ($record) =>
                         $record->update(['is_active' => false])

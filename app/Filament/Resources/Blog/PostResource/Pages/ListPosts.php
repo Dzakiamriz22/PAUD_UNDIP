@@ -74,7 +74,7 @@ class ListPosts extends ListRecords
             /** @var \App\Models\User $user */
             $user = Auth::user();
             if (!$post->trashed()) {
-                if ($user->hasAnyRole(['admin', config('filament-shield.super_admin.name')])) {
+                if ($user->hasAnyRole(['operator', config('filament-shield.super_admin.name')])) {
                     return static::getResource()::getUrl('edit', ['record' => $post, 'page' => $this->getPage(), 'activeTab' => $this->activeTab, 'tableFilters' => $this->tableFilters, 'tableSearch' => $this->tableSearch]);
                 }
                 return $post->created_by == Auth::user()->id ? static::getResource()::getUrl('edit', ['record' => $post, 'page' => $this->getPage(), 'activeTab' => $this->activeTab, 'tableFilters' => $this->tableFilters, 'tableSearch' => $this->tableSearch]) : null;

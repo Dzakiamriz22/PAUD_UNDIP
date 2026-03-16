@@ -14,7 +14,7 @@ class EditSchoolClass extends EditRecord
     {
         return [
             Actions\DeleteAction::make()
-                ->visible(fn () => auth()->user()->isSuperAdmin() || auth()->user()->hasRole('admin')),
+                ->visible(fn () => auth()->user()->isSuperAdmin() || auth()->user()->hasRole('operator')),
         ];
     }
 }

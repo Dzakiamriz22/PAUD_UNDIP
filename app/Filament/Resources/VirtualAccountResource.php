@@ -168,6 +168,6 @@ class VirtualAccountResource extends Resource
 
     protected static function canToggleActive(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'bendahara']) ?? false;
+        return auth()->user()?->hasAnyRole(['operator', 'bendahara']) ?? false;
     }
 }

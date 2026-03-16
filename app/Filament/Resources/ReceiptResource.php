@@ -39,11 +39,10 @@ class ReceiptResource extends Resource
 
         if (
             $user->isSuperAdmin()
-            || $user->hasRole('admin')
+            || $user->hasRole('operator')
             || $user->isKepsek()
             || $user->isBendahara()
             || $user->hasRole('auditor')
-            || $user->hasRole('operator')
         ) {
             return $query;
         }

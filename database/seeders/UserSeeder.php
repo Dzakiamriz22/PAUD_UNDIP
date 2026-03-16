@@ -23,7 +23,7 @@ class UserSeeder extends Seeder
             email: 'admin@paud.test',
             firstname: 'Admin',
             lastname: 'PAUD',
-            role: 'admin'
+            role: 'operator'
         );
 
         $this->createUser(

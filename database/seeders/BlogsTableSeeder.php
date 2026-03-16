@@ -34,7 +34,7 @@ class BlogsTableSeeder extends Seeder
 
         // Get admin users for creator/updater fields
         $adminIds = User::whereHas('roles', function ($query) {
-            $query->where('name', '=', 'admin');
+            $query->where('name', '=', 'operator');
         })->pluck('id')->toArray();
 
         // If no admins found, fallback to any users
@@ -135,7 +135,7 @@ class BlogsTableSeeder extends Seeder
 
         // Get editors/admins for created_by/updated_by fields
         $editorIds = User::whereHas('roles', function ($query) {
-            $query->whereIn('name', ['editor', 'admin']);
+            $query->whereIn('name', ['editor', 'operator']);
         })->pluck('id')->toArray();
 
         // If no editors found, use the same users as authors

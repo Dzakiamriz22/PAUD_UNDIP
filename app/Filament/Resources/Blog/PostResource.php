@@ -677,7 +677,7 @@ class PostResource extends Resource implements HasShieldPermissions
                 function (Post $post): bool {
                     /** @var \App\Models\User $user */
                     $user = Auth::user();
-                    if ($user->hasAnyRole(['admin', config('filament-shield.super_admin.name')])) {
+                    if ($user->hasAnyRole(['operator', config('filament-shield.super_admin.name')])) {
                         return true;
                     }
                     return $post->created_by == $user->id;

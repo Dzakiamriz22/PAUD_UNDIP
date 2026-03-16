@@ -198,7 +198,7 @@ class UserResource extends Resource implements HasShieldPermissions
                                             $user = Auth::user();
                                             return $user->isSuperAdmin()
                                                 ? $query->whereNotIn('name', [config('filament-shield.super_admin.name')])
-                                                : $query->whereNotIn('name', [config('filament-shield.super_admin.name'), 'admin']);
+                                                : $query->whereNotIn('name', [config('filament-shield.super_admin.name'), 'operator']);
                                         }
                                     )
                                     ->rules([
@@ -212,7 +212,7 @@ class UserResource extends Resource implements HasShieldPermissions
                                             $currentUser = Auth::user();
                                             // $record = $this->record; // pastikan ini bisa diakses
 
-                                            $wasAdminBefore = $record?->hasRole('admin');
+                                            $wasAdminBefore = $record?->hasRole('operator');
 
                                             // If the user is already admin, inject '2' into the roles array
                                             if ($wasAdminBefore) {
@@ -594,7 +594,7 @@ class UserResource extends Resource implements HasShieldPermissions
         $user = Auth::user();
 
         return $user
-            && ($user->hasRole('admin') || $user->hasRole(config('filament-shield.super_admin.name')));
+            && ($user->hasRole('operator') || $user->hasRole(config('filament-shield.super_admin.name')));
     }
 
 }
