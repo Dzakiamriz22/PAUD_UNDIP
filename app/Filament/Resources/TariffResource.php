@@ -53,7 +53,7 @@ class TariffResource extends Resource
 
     public static function canEdit($record): bool
     {
-        return Auth::user()->hasAnyRole(['admin', 'bendahara', config('filament-shield.super_admin.name')])
+        return Auth::user()->hasAnyRole(['operator', 'bendahara', config('filament-shield.super_admin.name')])
             && in_array($record->status, ['pending', 'rejected']);
     }
 
@@ -253,7 +253,7 @@ class TariffResource extends Resource
                     ->visible(fn (Tariff $record) =>
                         $record->status === 'rejected' && (
                             Auth::id() === $record->proposed_by
-                            || Auth::user()->hasAnyRole(['admin', 'bendahara', config('filament-shield.super_admin.name')])
+                            || Auth::user()->hasAnyRole(['operator', 'bendahara', config('filament-shield.super_admin.name')])
                         )
                     )
                     ->modal()
@@ -308,7 +308,7 @@ class TariffResource extends Resource
                     )
                     ->visible(fn (Tariff $record) =>
                         $record->status === 'approved'
-                        && Auth::user()->hasRole(['admin', 'bendahara'])
+                        && Auth::user()->hasRole(['operator', 'bendahara'])
                     )
                     ->action(fn (Tariff $record) =>
                         $record->update([
@@ -321,7 +321,7 @@ class TariffResource extends Resource
                 /* ===== DELETE ===== */
                 Tables\Actions\DeleteAction::make()
                     ->visible(fn () =>
-                        Auth::user()->hasRole(['admin', 'bendahara'])
+                        Auth::user()->hasRole(['operator', 'bendahara'])
                     ),
             ])
             ->defaultSort('created_at', 'desc');

@@ -42,7 +42,7 @@ class ListUsers extends ListRecords
         // $user = Auth::user();
         $tabs = [
             'all' => Tab::make()->query(fn($query) => $query->withoutTrashed()),
-            'admin' => Tab::make()->query(fn($query) => $query->withoutTrashed()->with('roles')->whereRelation('roles', 'name', '=', 'admin')),
+            'operator' => Tab::make()->query(fn($query) => $query->withoutTrashed()->with('roles')->whereRelation('roles', 'name', '=', 'operator')),
             'auditor' => Tab::make()->query(fn($query) => $query->withoutTrashed()->with('roles')->whereRelation('roles', 'name', '=', 'auditor')),
             'trashed' => Tab::make()->icon('heroicon-o-trash')->query(fn($query) => $query->onlyTrashed()),
         ];
@@ -73,7 +73,7 @@ class ListUsers extends ListRecords
             /** @var \App\Models\User $login_user */
             $login_user = Auth::user();
             if (!$user->trashed()) {
-                if ($login_user->hasAnyRole(['admin', config('filament-shield.super_admin.name')])) {
+                if ($login_user->hasAnyRole(['operator', config('filament-shield.super_admin.name')])) {
                     return static::getResource()::getUrl('edit', ['record' => $user, 'page' => $this->getPage(), 'activeTab' => $this->activeTab, 'tableFilters' => $this->tableFilters, 'tableSearch' => $this->tableSearch]);
                 }
                 return $user->created_by == Auth::user()->id ? static::getResource()::getUrl('edit', ['record' => $user, 'page' => $this->getPage(), 'activeTab' => $this->activeTab, 'tableFilters' => $this->tableFilters, 'tableSearch' => $this->tableSearch]) : null;

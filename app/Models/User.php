@@ -88,7 +88,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, 
 
     public function getIsAdminAttribute(): bool
     {
-        return $this->isSuperAdmin() || $this->hasRole('admin');
+        return $this->isSuperAdmin() || $this->hasRole('operator');
     }
 
     /* ===================== ROLE HELPERS ===================== */
@@ -141,7 +141,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, 
      */
     public function visibleSchoolClassIds(): array
     {
-        if ($this->isSuperAdmin() || $this->hasRole('admin') || $this->isKepsek()) {
+        if ($this->isSuperAdmin() || $this->hasRole('operator') || $this->isKepsek()) {
             return SchoolClass::pluck('id')->toArray();
         }
 

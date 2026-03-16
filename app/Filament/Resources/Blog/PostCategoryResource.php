@@ -383,7 +383,7 @@ class PostCategoryResource extends Resource implements HasShieldPermissions
                 function (Category $category): bool {
                     /** @var \App\Models\User $user */
                     $user = Auth::user();
-                    if ($user->hasAnyRole(['admin', config('filament-shield.super_admin.name')])) {
+                    if ($user->hasAnyRole(['operator', config('filament-shield.super_admin.name')])) {
                         return true;
                     }
                     return $category->created_by == $user->id;

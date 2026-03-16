@@ -36,7 +36,7 @@ class RoleHasScopeResource extends Resource
                             ->whereHas('role', function ($query) {
                                 $query->whereNotIn('name', [
                                     config('filament-shield.super_admin.name'),
-                                    'admin',
+                                    'operator',
                                 ]);
                             })
                             ->whereHas('model')

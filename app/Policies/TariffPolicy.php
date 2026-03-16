@@ -29,7 +29,7 @@ class TariffPolicy
     public function create(User $user): bool
     {
         // Only bendahara, admin, and kepsek can create
-        return $user->isSuperAdmin() || $user->hasRole('admin') || $user->hasRole('bendahara') || $user->isKepsek();
+        return $user->isSuperAdmin() || $user->hasRole('operator') || $user->hasRole('bendahara') || $user->isKepsek();
     }
 
     /**
@@ -38,7 +38,7 @@ class TariffPolicy
     public function update(User $user, Tariff $tariff): bool
     {
         // Only bendahara, admin, and kepsek can update
-        return $user->isSuperAdmin() || $user->hasRole('admin') || $user->hasRole('bendahara') || $user->isKepsek();
+        return $user->isSuperAdmin() || $user->hasRole('operator') || $user->hasRole('bendahara') || $user->isKepsek();
     }
 
     /**
@@ -47,7 +47,7 @@ class TariffPolicy
     public function delete(User $user, Tariff $tariff): bool
     {
         // Only admin can delete
-        return $user->isSuperAdmin() || $user->hasRole('admin');
+        return $user->isSuperAdmin() || $user->hasRole('operator');
     }
 
     /**

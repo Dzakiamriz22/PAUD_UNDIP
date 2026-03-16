@@ -32,7 +32,6 @@ class RoleResource extends Resource implements HasShieldPermissions
 
         // Administrator
         'super_admin' => 'Super Admin',
-        'admin' => 'Admin',
         'operator' => 'Operator',
         'guru' => 'Guru',
         'bendahara' => 'Bendahara',

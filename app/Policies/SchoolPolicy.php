@@ -29,7 +29,7 @@ class SchoolPolicy
     public function create(User $user): bool
     {
         // Only admin and super_admin can create
-        return $user->isSuperAdmin() || $user->hasRole('admin');
+        return $user->isSuperAdmin() || $user->hasRole('operator');
     }
 
     /**
@@ -38,7 +38,7 @@ class SchoolPolicy
     public function update(User $user, School $school): bool
     {
         // Only admin and super_admin can update
-        return $user->isSuperAdmin() || $user->hasRole('admin');
+        return $user->isSuperAdmin() || $user->hasRole('operator');
     }
 
     /**

@@ -29,7 +29,7 @@ class VirtualAccountPolicy
     public function create(User $user): bool
     {
         // Only bendahara, admin, and kepsek can create
-        return $user->isSuperAdmin() || $user->hasRole('admin') || $user->hasRole('bendahara') || $user->isKepsek();
+        return $user->isSuperAdmin() || $user->hasRole('operator') || $user->hasRole('bendahara') || $user->isKepsek();
     }
 
     /**
@@ -38,7 +38,7 @@ class VirtualAccountPolicy
     public function update(User $user, VirtualAccount $virtualAccount): bool
     {
         // Only bendahara, admin, and kepsek can update
-        return $user->isSuperAdmin() || $user->hasRole('admin') || $user->hasRole('bendahara') || $user->isKepsek();
+        return $user->isSuperAdmin() || $user->hasRole('operator') || $user->hasRole('bendahara') || $user->isKepsek();
     }
 
     /**
@@ -47,7 +47,7 @@ class VirtualAccountPolicy
     public function delete(User $user, VirtualAccount $virtualAccount): bool
     {
         // Only admin can delete
-        return $user->isSuperAdmin() || $user->hasRole('admin');
+        return $user->isSuperAdmin() || $user->hasRole('operator');
     }
 
     /**

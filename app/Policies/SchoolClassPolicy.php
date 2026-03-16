@@ -14,7 +14,7 @@ class SchoolClassPolicy
     public function viewAny(User $user): bool
     {
         // Super roles dan auditor dapat melihat semua
-        if ($user->isSuperAdmin() || $user->hasRole('admin') || $user->hasRole('auditor')) {
+        if ($user->isSuperAdmin() || $user->hasRole('operator') || $user->hasRole('auditor')) {
             return true;
         }
 
@@ -32,7 +32,7 @@ class SchoolClassPolicy
         }
 
         // Super roles → allow all
-        if ($user->isSuperAdmin() || $user->hasRole('admin')) {
+        if ($user->isSuperAdmin() || $user->hasRole('operator')) {
             return true;
         }
 
@@ -60,7 +60,7 @@ class SchoolClassPolicy
     public function create(User $user): bool
     {
         // Only admin and super_admin can create
-        return $user->isSuperAdmin() || $user->hasRole('admin');
+        return $user->isSuperAdmin() || $user->hasRole('operator');
     }
 
     /**
@@ -69,7 +69,7 @@ class SchoolClassPolicy
     public function update(User $user, SchoolClass $schoolClass): bool
     {
         // Only admin and super_admin can update
-        return $user->isSuperAdmin() || $user->hasRole('admin');
+        return $user->isSuperAdmin() || $user->hasRole('operator');
     }
 
     /**
