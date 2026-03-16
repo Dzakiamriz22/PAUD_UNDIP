@@ -16,9 +16,7 @@ use App\Models\VirtualAccount;
 use App\Models\AcademicYear;
 
 use Illuminate\Support\Facades\DB;
-use App\Services\BatchInvoiceService;
-use ZipArchive;
-use Illuminate\Http\Response;
+// PDF generation/zip/download removed — create only
 
 class CreateInvoice extends CreateRecord
 {
@@ -226,61 +224,14 @@ class CreateInvoice extends CreateRecord
             return;
         }
 
-        // Ambil invoices yang baru dibuat
-        $invoices = Invoice::whereIn('id', $createdInvoiceIds)->get();
+        // Sukses: tampilkan notifikasi dan kembali ke daftar Invoice
+        Notification::make()
+            ->title('Invoice berhasil dibuat')
+            ->success()
+            ->send();
 
-        // Jika hanya 1 invoice dibuat, langsung unduh PDF tunggal
-        $batchService = new BatchInvoiceService();
-
-        $tmpDir = storage_path('app/invoice_tmp');
-        if (!is_dir($tmpDir)) {
-            @mkdir($tmpDir, 0755, true);
-        }
-
-            if ($invoices->count() === 1) {
-            $inv = $invoices->first();
-            $pdf = $batchService->generateSinglePdf($inv);
-            $safeInvoiceNumber = str_replace('/', '-', $inv->invoice_number);
-            $studentName = preg_replace('/[^A-Za-z0-9\-_. ]/', '', $inv->student->name ?? 'student');
-            $fileName = 'invoice-' . $safeInvoiceNumber . '-' . $studentName . '.pdf';
-            $filePath = $tmpDir . DIRECTORY_SEPARATOR . $fileName;
-            file_put_contents($filePath, $pdf->output());
-                // Tampilkan notifikasi sukses lalu arahkan ke route download sementara
-                Notification::make()
-                    ->title('Invoice berhasil dibuat dan PDF disimpan')
-                    ->success()
-                    ->send();
-
-                $this->redirect(route('invoices.download_temp', ['filename' => $fileName]));
-                return;
-        }
-
-        // Lebih dari satu: buat SATU PDF gabungan (batch)
-        $pdf = $batchService->generateBatchPdf($invoices);
-
-        $downloadName = 'invoices-' . now()->format('Ymd-His') . '.pdf';
-        $filePath = $tmpDir . DIRECTORY_SEPARATOR . $downloadName;
-
-            try {
-                file_put_contents($filePath, $pdf->output());
-            } catch (\Exception $e) {
-                Notification::make()
-                    ->title('Gagal membuat file PDF gabungan')
-                    ->danger()
-                    ->send();
-
-                $this->redirect($this->getResource()::getUrl('index'));
-                return;
-            }
-
-            // Tampilkan notifikasi sukses lalu arahkan ke route download sementara untuk file gabungan
-            Notification::make()
-                ->title('Invoice berhasil dibuat dan PDF gabungan disimpan')
-                ->success()
-                ->send();
-
-            $this->redirect(route('invoices.download_temp', ['filename' => basename($filePath)]));
-            return;
+        $this->redirect($this->getResource()::getUrl('index'));
+        return;
     }
 
     /**
@@ -292,7 +243,32 @@ class CreateInvoice extends CreateRecord
     protected function getFormActions(): array
     {
         return [
-            $this->getCancelFormAction(),
+            parent::getCreateFormAction()
+                ->label('Buat Invoice')
+                ->color('success')
+                ->icon('heroicon-o-check')
+                ->visible(fn (): bool => $this->isCreateActionVisible()),
+            parent::getCancelFormAction()
+                ->label('Batal')
+                ->icon('heroicon-o-chevron-left'),
         ];
+    }
+
+    private function isCreateActionVisible(): bool
+    {
+        // If the wizard persists the active step in the query string, prefer that
+        $step = request()->query('step');
+        if ($step !== null) {
+            return $step === 'konfigurasi_review';
+        }
+
+        try {
+            $state = $this->form->getState();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // If validation fails while rendering, assume form is incomplete
+            return false;
+        }
+
+        return !empty($state['due_date'] ?? null);
     }
 }

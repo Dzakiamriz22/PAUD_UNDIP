@@ -125,6 +125,17 @@ class ReceiptResource extends Resource
                                         if (!empty($invoice->va_number)) {
                                             $set('payment_method', 'va');
                                             $set('reference_number', $invoice->va_number);
+                                        } else {
+                                            // Jika invoice tidak punya VA, ambil VA aktif dari tabel virtual_accounts
+                                            $va = \DB::table('virtual_accounts')
+                                                ->where('is_active', 1)
+                                                ->orderBy('id')
+                                                ->first();
+
+                                            if ($va && !empty($va->va_number)) {
+                                                $set('payment_method', 'va');
+                                                $set('reference_number', $va->va_number);
+                                            }
                                         }
 
                                         // Set issued_at ke waktu sekarang
