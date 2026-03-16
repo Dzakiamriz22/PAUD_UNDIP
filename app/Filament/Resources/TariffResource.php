@@ -9,6 +9,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -177,6 +178,20 @@ class TariffResource extends Resource
             ])
 
             ->actions([
+                Tables\Actions\Action::make('approval_history')
+                    ->label('Riwayat Approval')
+                    ->icon('heroicon-o-clock')
+                    ->color('gray')
+                    ->modalHeading('Riwayat Approval Tarif')
+                    ->modalWidth('4xl')
+                    ->form([
+                        Forms\Components\Placeholder::make('approval_history')
+                            ->label('')
+                            ->content(fn (Tariff $record): HtmlString => self::renderApprovalHistory($record)),
+                    ])
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup'),
+
                 Tables\Actions\Action::make('lihat_alasan')
                     ->label('Lihat Alasan')
                     ->icon('heroicon-o-chat-bubble-left-right')
@@ -187,26 +202,38 @@ class TariffResource extends Resource
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('OK')
                     ->visible(fn (Tariff $record) => $record->status === 'rejected'),
-                    /* ===== EDIT ALASAN (KEPALA SEKOLAH) ===== */
-                    Tables\Actions\Action::make('edit_alasan')
-                        ->label('Edit Alasan')
-                        ->icon('heroicon-o-pencil')
-                        ->color('primary')
-                        ->visible(fn (Tariff $record) =>
-                            $record->status === 'rejected'
-                            && Auth::user()->hasRole('kepala_sekolah')
-                        )
-                        ->form([
-                            Forms\Components\Textarea::make('rejection_note')
-                                ->label('Alasan Penolakan')
-                                ->required()
-                                ->rows(4),
-                        ])
-                        ->action(function (Tariff $record, array $data) {
-                            $record->update([
-                                'rejection_note' => $data['rejection_note'],
-                            ]);
-                        }),
+
+                /* ===== EDIT ALASAN (KEPALA SEKOLAH) ===== */
+                Tables\Actions\Action::make('edit_alasan')
+                    ->label('Edit Alasan')
+                    ->icon('heroicon-o-pencil')
+                    ->color('primary')
+                    ->visible(fn (Tariff $record) =>
+                        $record->status === 'rejected'
+                        && Auth::user()->hasRole('kepala_sekolah')
+                    )
+                    ->form([
+                        Forms\Components\Textarea::make('rejection_note')
+                            ->label('Alasan Penolakan')
+                            ->required()
+                            ->rows(4),
+                    ])
+                    ->action(function (Tariff $record, array $data) {
+                        $oldNote = $record->rejection_note;
+
+                        $record->update([
+                            'rejection_note' => $data['rejection_note'],
+                        ]);
+
+                        self::storeApprovalHistory(
+                            $record,
+                            action: 'rejection_note_updated',
+                            fromStatus: $record->status,
+                            toStatus: $record->status,
+                            note: sprintf('Alasan penolakan diubah. Sebelumnya: %s', $oldNote ?: '-')
+                        );
+                    }),
+
                 /* ===== APPROVE ===== */
                 Tables\Actions\Action::make('approve')
                     ->label('Approve')
@@ -216,12 +243,24 @@ class TariffResource extends Resource
                         $record->status === 'pending'
                         && Auth::user()->hasAnyRole(['kepala_sekolah', config('filament-shield.super_admin.name')])
                     )
-                    ->action(fn (Tariff $record) => $record->update([
-                        'status'         => 'approved',
-                        'approved_by'    => Auth::id(),
-                        'approved_at'    => now(),
-                        'rejection_note' => null,
-                    ])),
+                    ->action(function (Tariff $record) {
+                        $fromStatus = $record->status;
+
+                        $record->update([
+                            'status'         => 'approved',
+                            'approved_by'    => Auth::id(),
+                            'approved_at'    => now(),
+                            'rejection_note' => null,
+                        ]);
+
+                        self::storeApprovalHistory(
+                            $record,
+                            action: 'approved',
+                            fromStatus: $fromStatus,
+                            toStatus: 'approved',
+                            note: 'Tarif disetujui.'
+                        );
+                    }),
 
                 /* ===== REJECT DENGAN ALASAN ===== */
                 Tables\Actions\Action::make('reject')
@@ -239,10 +278,20 @@ class TariffResource extends Resource
                             ->rows(4),
                     ])
                     ->action(function (Tariff $record, array $data) {
+                        $fromStatus = $record->status;
+
                         $record->update([
                             'status'         => 'rejected',
                             'rejection_note' => $data['rejection_note'],
                         ]);
+
+                        self::storeApprovalHistory(
+                            $record,
+                            action: 'rejected',
+                            fromStatus: $fromStatus,
+                            toStatus: 'rejected',
+                            note: $data['rejection_note']
+                        );
                     }),
 
                 /* ===== PERBAIKI / AJUKAN ULANG ===== */
@@ -283,6 +332,8 @@ class TariffResource extends Resource
                             ->required(),
                     ])
                     ->action(function (Tariff $record, array $data) {
+                        $fromStatus = $record->status;
+
                         $record->update([
                             'income_type_id' => $data['income_type_id'],
                             'class_category' => $data['class_category'],
@@ -291,6 +342,14 @@ class TariffResource extends Resource
                             'status'         => 'pending',
                             'rejection_note' => null,
                         ]);
+
+                        self::storeApprovalHistory(
+                            $record,
+                            action: 'resubmitted',
+                            fromStatus: $fromStatus,
+                            toStatus: 'pending',
+                            note: 'Tarif diperbaiki dan diajukan ulang.'
+                        );
                     }),
 
                 /* ===== AKTIF / NONAKTIF ===== */
@@ -316,8 +375,6 @@ class TariffResource extends Resource
                         ])
                     ),
 
-                // Edit action removed: use 'Perbaiki / Ajukan Ulang' instead
-
                 /* ===== DELETE ===== */
                 Tables\Actions\DeleteAction::make()
                     ->visible(fn () =>
@@ -325,6 +382,146 @@ class TariffResource extends Resource
                     ),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+
+    protected static function storeApprovalHistory(
+        Tariff $record,
+        string $action,
+        ?string $fromStatus,
+        ?string $toStatus,
+        ?string $note = null
+    ): void {
+        $record->approvalHistories()->create([
+            'action' => $action,
+            'from_status' => $fromStatus,
+            'to_status' => $toStatus,
+            'note' => $note,
+            'acted_by' => Auth::id(),
+            'acted_at' => now(),
+        ]);
+    }
+
+    protected static function renderApprovalHistory(Tariff $record): HtmlString
+    {
+        self::ensureApprovalHistoryExists($record);
+
+        $histories = $record->approvalHistories()->with('actor')->orderByDesc('acted_at')->get();
+
+        if ($histories->isEmpty()) {
+            return new HtmlString('<div class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">Belum ada riwayat approval.</div>');
+        }
+
+        $items = $histories->map(function ($history) {
+            $actorName = e($history->actor?->name ?? $history->actor?->username ?? 'Sistem');
+            $actedAt = e(optional($history->acted_at)->format('d M Y H:i') ?? '-');
+            $actionLabel = e(self::historyActionLabel((string) $history->action));
+            $statusFlow = self::historyStatusFlow(
+                $history->from_status,
+                $history->to_status,
+            );
+            $note = $history->note
+                ? '<div class="mt-2 rounded-md bg-gray-50 p-2 text-sm text-gray-700"><span class="font-semibold">Catatan:</span> ' . e((string) $history->note) . '</div>'
+                : '';
+
+            return '<li class="relative border-l-2 border-gray-200 pl-4 pb-4">'
+                . '<div class="absolute -left-[7px] top-1 h-3 w-3 rounded-full bg-primary-600"></div>'
+                . '<div class="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">'
+                . '<div class="flex flex-wrap items-center justify-between gap-2">'
+                . '<span class="inline-flex items-center rounded-md bg-primary-50 px-2 py-1 text-xs font-semibold text-primary-700">' . $actionLabel . '</span>'
+                . '<span class="text-xs text-gray-500">' . $actedAt . '</span>'
+                . '</div>'
+                . '<div class="mt-2 text-sm text-gray-800">' . $statusFlow . '</div>'
+                . '<div class="mt-1 text-sm text-gray-600">Oleh: <span class="font-medium text-gray-900">' . $actorName . '</span></div>'
+                . $note
+                . '</div>'
+                . '</li>';
+        })->implode('');
+
+        $html = '<div class="space-y-3">'
+            . '<div class="rounded-lg border border-primary-200 bg-primary-50 p-3 text-sm text-primary-900">'
+            . '<span class="font-semibold">Total riwayat:</span> ' . $histories->count() . ' aktivitas'
+            . '</div>'
+            . '<ol class="max-h-[28rem] overflow-y-auto pr-2">' . $items . '</ol>'
+            . '</div>';
+
+        return new HtmlString($html);
+    }
+
+    protected static function historyActionLabel(string $action): string
+    {
+        return match ($action) {
+            'submitted' => 'Diajukan',
+            'approved' => 'Disetujui',
+            'rejected' => 'Ditolak',
+            'resubmitted' => 'Diajukan Ulang',
+            'rejection_note_updated' => 'Alasan Diubah',
+            default => ucwords(str_replace('_', ' ', $action)),
+        };
+    }
+
+    protected static function historyStatusFlow(?string $fromStatus, ?string $toStatus): string
+    {
+        if (! $fromStatus && ! $toStatus) {
+            return '<span class="text-gray-500">Tanpa perubahan status</span>';
+        }
+
+        $from = self::historyStatusLabel($fromStatus);
+        $to = self::historyStatusLabel($toStatus);
+
+        return '<span class="inline-flex items-center gap-2">'
+            . '<span class="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">' . e($from) . '</span>'
+            . '<span class="text-gray-500">-></span>'
+            . '<span class="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">' . e($to) . '</span>'
+            . '</span>';
+    }
+
+    protected static function historyStatusLabel(?string $status): string
+    {
+        return match ($status) {
+            'pending' => 'Menunggu',
+            'approved' => 'Disetujui',
+            'rejected' => 'Ditolak',
+            null => '-',
+            default => $status,
+        };
+    }
+
+    protected static function ensureApprovalHistoryExists(Tariff $record): void
+    {
+        if ($record->approvalHistories()->exists()) {
+            return;
+        }
+
+        $record->approvalHistories()->create([
+            'action' => 'submitted',
+            'from_status' => null,
+            'to_status' => 'pending',
+            'note' => 'Tarif diajukan untuk persetujuan.',
+            'acted_by' => $record->proposed_by,
+            'acted_at' => $record->created_at,
+        ]);
+
+        if ($record->status === 'approved') {
+            $record->approvalHistories()->create([
+                'action' => 'approved',
+                'from_status' => 'pending',
+                'to_status' => 'approved',
+                'note' => 'Tarif disetujui.',
+                'acted_by' => $record->approved_by,
+                'acted_at' => $record->approved_at ?? $record->updated_at,
+            ]);
+        }
+
+        if ($record->status === 'rejected') {
+            $record->approvalHistories()->create([
+                'action' => 'rejected',
+                'from_status' => 'pending',
+                'to_status' => 'rejected',
+                'note' => $record->rejection_note,
+                'acted_by' => $record->approved_by,
+                'acted_at' => $record->updated_at,
+            ]);
+        }
     }
 
     /* =====================================================
