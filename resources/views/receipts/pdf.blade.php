@@ -93,7 +93,6 @@
 
 @include('partials.payment-footer', [
     'signatureDate' => now()->format('d F Y'),
-    'signatureName' => $receipt->creator->username ?? 'Bendahara',
     'signatureRole' => 'Bendahara',
 ])
 

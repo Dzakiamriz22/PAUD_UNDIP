@@ -109,8 +109,7 @@
 
 @include('partials.payment-footer', [
     'signatureDate' => now()->format('d F Y'),
-    'signatureName' => auth()->user()->name ?? 'Admin',
-    'signatureRole' => 'Petugas / Bendahara',
+    'signatureRole' => 'Bendahara',
 ])
 
 </body>

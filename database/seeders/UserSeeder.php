@@ -10,13 +10,13 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->createUser(
-            username: 'superadmin',
-            email: 'superadmin@paud.test',
-            firstname: 'Super',
-            lastname: 'Admin',
-            role: 'super_admin'
-        );
+        // $this->createUser(
+        //     username: 'superadmin',
+        //     email: 'superadmin@paud.test',
+        //     firstname: 'Super',
+        //     lastname: 'Admin',
+        //     role: 'super_admin'
+        // );
 
         $this->createUser(
             username: 'admin',
@@ -34,13 +34,13 @@ class UserSeeder extends Seeder
             role: 'guru'
         );
 
-        $this->createUser(
-            username: 'bendahara',
-            email: 'bendahara@paud.test',
-            firstname: 'Bendahara',
-            lastname: 'PAUD',
-            role: 'bendahara'
-        );
+        // $this->createUser(
+        //     username: 'bendahara',
+        //     email: 'bendahara@paud.test',
+        //     firstname: 'Bendahara',
+        //     lastname: 'PAUD',
+        //     role: 'bendahara'
+        // );
 
         $this->createUser(
             username: 'kepsek',
@@ -66,22 +66,27 @@ class UserSeeder extends Seeder
         string $lastname,
         string $role
     ): void {
-        $user = User::where('username', $username)
-            ->orWhere('email', $email)
+        // Cari user berdasarkan email ATAU username
+        $user = User::where('email', $email)
+            ->orWhere('username', $username)
             ->first();
 
         if (! $user) {
-            $user = User::create([
-                'username'  => $username,
-                'email'     => $email,
-                'firstname' => $firstname,
-                'lastname'  => $lastname,
-                'password'  => Hash::make('password'),
-                'email_verified_at' => now(),
-            ]);
+            // Kalau belum ada → buat baru
+            $user = new User();
+            $user->password = Hash::make('password'); // hanya saat create
         }
 
-        // syncRoles aman untuk re-run
+        // Update / isi data
+        $user->username  = $username;
+        $user->email     = $email;
+        $user->firstname = $firstname;
+        $user->lastname  = $lastname;
+        $user->email_verified_at = now();
+
+        $user->save();
+
+        // Assign role (aman untuk re-run)
         $user->syncRoles([$role]);
     }
 }

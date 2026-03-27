@@ -13,6 +13,7 @@ use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Filament\Support\RawJs;
 
 class TariffResource extends Resource
 {
@@ -90,6 +91,8 @@ class TariffResource extends Resource
 
                     Forms\Components\TextInput::make('amount')
                         ->label('Nominal Tarif')
+                        ->mask(RawJs::make('$money($input)'))
+                        ->stripCharacters(',')
                         ->numeric()
                         ->prefix('Rp')
                         ->required(),
