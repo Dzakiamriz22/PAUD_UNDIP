@@ -174,11 +174,11 @@
                     <div style="height:70px;"></div>
 
                     <div style="font-weight:700;">
-                        Nama
+                        {{ $filters['kepala_sekolah_name'] ?? '-' }}
                     </div>
 
                     <div>
-                        NIP
+                        {{ $filters['kepala_sekolah_nip'] ?? '-' }}
                     </div>
                 </div>
 

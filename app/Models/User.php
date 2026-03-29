@@ -44,6 +44,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, 
         'password',
         'kode_unit',
         'telp',
+        'nip',
     ];
 
     protected $casts = [
