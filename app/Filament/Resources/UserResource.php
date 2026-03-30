@@ -162,6 +162,17 @@ class UserResource extends Resource implements HasShieldPermissions
 
                                 PhoneInput::make('telp'),
 
+                                Forms\Components\TextInput::make('nip')
+                                    ->label('NIP')
+                                    ->maxLength(100)
+                                    ->nullable()
+                                    ->rules(function ($record) {
+                                        $userId = $record?->id;
+                                        return $userId
+                                            ? ['unique:users,nip,' . $userId]
+                                            : ['unique:users,nip'];
+                                    }),
+
                                 Forms\Components\TextInput::make('email')
                                     ->email()
                                     ->required()

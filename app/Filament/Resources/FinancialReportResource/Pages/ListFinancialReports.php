@@ -1019,6 +1019,11 @@ class ListFinancialReports extends ListRecords
         };
         
         // academic year removed from PDF filters; using calendar year/month only
+        
+        // Get principal (kepala sekolah) data for signature
+        $principal = \App\Models\User::role('kepala_sekolah')->first();
+        $principal_name = $principal ? $principal->firstname . ' ' . $principal->lastname : '-';
+        $principal_nip = $principal ? ($principal->nip ?? '-') : '-';
 
         $data = [
             'filters' => [
@@ -1031,6 +1036,8 @@ class ListFinancialReports extends ListRecords
                 'tanggal_cetak' => now()->format('d/m/Y'),
                 'sistem_bayar' => 'Auto system',
                 'bendahara' => auth()->user()?->name ?? '-',
+                'kepala_sekolah_name' => $principal_name,
+                'kepala_sekolah_nip' => $principal_nip,
             ],
             'generatedAt' => now(),
         ];

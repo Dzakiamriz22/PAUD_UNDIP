@@ -77,7 +77,11 @@ class MyProfileExtended extends MyProfileComponent
                     TextInput::make('firstname')
                         ->required(),
                     TextInput::make('lastname')
-                        ->required()
+                        ->required(),
+                    TextInput::make('nip')
+                        ->label('NIP')
+                        ->maxLength(100)
+                        ->nullable(),
                 ]),
             ])
             ->operation('edit')
