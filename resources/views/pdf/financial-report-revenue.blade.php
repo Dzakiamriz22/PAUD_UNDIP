@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Pemasukan</title>
+    <title>Laporan Pendapatan</title>
     @include('partials.payment-styles')
     <style>
         @page { size: A4 landscape; margin: 10mm; }
@@ -49,7 +49,7 @@
                 @endif
             </td>
             <td>
-                <div class="title">LAPORAN PEMASUKAN (REVENUE REPORT)</div>
+                <div class="title">LAPORAN PENDAPATAN (REVENUE REPORT)</div>
                 <div class="subtitle">KEGIATAN USAHA BISNIS DAN KOMERSIAL UNIVERSITAS DIPONEGORO</div>
                 <div class="subtitle">PADA UPKAB BP UBIKAR</div>
             </td>
