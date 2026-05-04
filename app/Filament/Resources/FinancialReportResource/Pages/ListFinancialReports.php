@@ -995,6 +995,10 @@ class ListFinancialReports extends ListRecords
     
     public function exportPdf()
     {
+        // Workaround for large PDF data set (300+ rows)
+        @ini_set('memory_limit', '1024M');
+        set_time_limit(0);
+
         $generalSettings = app(GeneralSettings::class);
         $periodRange = $this->buildPeriodRange();
         
@@ -1047,7 +1051,7 @@ class ListFinancialReports extends ListRecords
             $data['revenueRows'] = $revenueRows;
             $data['revenueTotal'] = array_sum(array_column($revenueRows, 'nominal'));
             $view = 'pdf.financial-report-revenue';
-            $filename = 'laporan-pemasukan-' . $this->year;
+            $filename = 'laporan-pendapatan-' . $this->year;
         } else {
             $receiptRows = $this->buildReceiptRows();
             $data['receiptRows'] = $receiptRows;
@@ -1060,7 +1064,12 @@ class ListFinancialReports extends ListRecords
         }
 
         $pdf = Pdf::loadView($view, $data)
-            ->setPaper('A4', 'landscape');
+            ->setPaper('A4', 'landscape')
+            ->setOptions([ 
+                'dpi' => 96, 
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+            ]);
 
         if ($this->granularity === 'monthly' && $this->month) {
             $filename .= '-' . str_pad($this->month, 2, '0', STR_PAD_LEFT);
@@ -1268,7 +1277,7 @@ class ListFinancialReports extends ListRecords
     public function exportExcel()
     {
         $filename = $this->reportType === 'revenue'
-            ? 'laporan-pemasukan-' . $this->year
+            ? 'laporan-pendapatan-' . $this->year
             : 'laporan-penerimaan-' . $this->year;
         if ($this->granularity === 'monthly' && $this->month) {
             $filename .= '-' . str_pad($this->month, 2, '0', STR_PAD_LEFT);

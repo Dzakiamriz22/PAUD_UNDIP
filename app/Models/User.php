@@ -34,6 +34,15 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, 
     use HasApiTokens, HasFactory, Notifiable;
     use InteractsWithMediaFolders;
 
+    protected static function booted(): void
+    {
+        static::deleting(function (User $user) {
+            // Keep the tariffs records historically intact by removing the user reference.
+            $user->proposedTariffs()->update(['proposed_by' => null]);
+            $user->approvedTariffs()->update(['approved_by' => null]);
+        });
+    }
+
     /* ===================== BASIC CONFIG ===================== */
 
     protected $fillable = [
@@ -130,6 +139,16 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, 
     /**
      * Kelas yang diampu sebagai wali kelas
      */
+    public function proposedTariffs()
+    {
+        return $this->hasMany(\App\Models\Tariff::class, 'proposed_by');
+    }
+
+    public function approvedTariffs()
+    {
+        return $this->hasMany(\App\Models\Tariff::class, 'approved_by');
+    }
+
     public function homeroomClasses()
     {
         return $this->hasMany(\App\Models\SchoolClass::class, 'homeroom_teacher_id');

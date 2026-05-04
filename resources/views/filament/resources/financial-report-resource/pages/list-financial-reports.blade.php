@@ -17,7 +17,7 @@
             <div class="flex items-center justify-between mb-3">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                        {{ $reportType === 'revenue' ? 'Laporan Pemasukan' : 'Laporan Penerimaan' }}
+                        {{ $reportType === 'revenue' ? 'Laporan Pendapatan' : 'Laporan Penerimaan' }}
                     </h1>
                     <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">PAUD UNDIP • Sistem Pembayaran Virtual Account BNI</p>
                 </div>
@@ -64,7 +64,7 @@
             <div class="flex items-start justify-between mb-3">
                 <div>
                     <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        Filter Laporan {{ $reportType === 'revenue' ? 'Pemasukan' : 'Penerimaan' }}
+                        Filter Laporan {{ $reportType === 'revenue' ? 'Pendapatan' : 'Penerimaan' }}
                     </h3>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Filter data berdasarkan periode, jenis pendapatan, kelas, status, dan tahun anggaran</p>
                 </div>
@@ -517,11 +517,11 @@
                 console.log('Financial report detail toggle script loaded');
             </script>
 
-            <!-- Sumber Pemasukan -->
+            <!-- Sumber Pendapatan -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                 <div class="p-4 border-b border-gray-200 dark:border-gray-700">
                     <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase">
-                        {{ $reportType === 'revenue' ? 'Sumber Pemasukan' : 'Sumber Penerimaan' }}
+                        {{ $reportType === 'revenue' ? 'Sumber Pendapatan' : 'Sumber Penerimaan' }}
                     </h3>
                 </div>
                 <div class="p-4">

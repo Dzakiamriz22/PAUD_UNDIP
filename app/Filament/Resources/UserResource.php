@@ -162,17 +162,6 @@ class UserResource extends Resource implements HasShieldPermissions
 
                                 PhoneInput::make('telp'),
 
-                                Forms\Components\TextInput::make('nip')
-                                    ->label('NIP')
-                                    ->maxLength(100)
-                                    ->nullable()
-                                    ->rules(function ($record) {
-                                        $userId = $record?->id;
-                                        return $userId
-                                            ? ['unique:users,nip,' . $userId]
-                                            : ['unique:users,nip'];
-                                    }),
-
                                 Forms\Components\TextInput::make('email')
                                     ->email()
                                     ->required()
@@ -593,7 +582,18 @@ class UserResource extends Resource implements HasShieldPermissions
 
     public static function canDelete(Model $record): bool
     {
-        return auth()->user()?->can('delete_user') ?? false;
+        if (! (auth()->user()?->can('delete_user') ?? false)) {
+            return false;
+        }
+
+        if ($record instanceof User) {
+            // Optional safety: do not allow deleting users who still have active tariff links.
+            // The User model boot handler already Nulls these on delete for referential integrity,
+            // but this adds explicit UI-level prevention so the action is hidden.
+            return ! ($record->proposedTariffs()->exists() || $record->approvedTariffs()->exists());
+        }
+
+        return true;
     }
 
     public static function canUpdate(Model $record): bool
